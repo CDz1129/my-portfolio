@@ -129,6 +129,7 @@ export function buildOverview(input: OverviewInput): Overview {
         gainPct: cost > 0 ? gain / cost : 0,
       }
     })
+    holdingViews.sort((a, b) => b.valueBase - a.valueBase)
     return {
       account,
       valueBase,

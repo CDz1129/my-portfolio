@@ -13,12 +13,14 @@ import {
 } from '@/db/repository'
 import { db as realDb } from '@/db/database'
 import { CURRENCIES } from '@/domain/currency'
+import { useT, type Lang } from '@/i18n'
 import { Button, Card, Field, Segmented, Select, TextInput } from '@/components/ui'
 import type { ThemePreference } from '@/lib/theme'
 
 export function SettingsPage() {
   const { settings } = usePortfolioData()
   const { mode, openDemo, demoHasData, resetDemo, switchToReal } = useDataMode()
+  const { t, lang } = useT()
   const sync = useSync()
   const autoSyncOn = settings.autoSync !== false
   const [confirmingClear, setConfirmingClear] = useState(false)
@@ -27,6 +29,9 @@ export function SettingsPage() {
   const [backupMessage, setBackupMessage] = useState('')
   const [backupError, setBackupError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const locale = lang === 'en' ? 'en-US' : 'zh-CN'
+  const clearWord = t('settings.clearPlaceholder')
 
   const realAccounts = useLiveQuery(() => realDb.accounts.count(), [], 0)
   const realHoldings = useLiveQuery(() => realDb.holdings.count(), [], 0)
@@ -64,7 +69,7 @@ export function SettingsPage() {
   }
 
   async function handleClear() {
-    if (phrase.trim() !== '清空') return
+    if (phrase.trim() !== clearWord) return
     await clearAllData()
     // Stay on the (now empty) real account instead of falling back to demo.
     await switchToReal()
@@ -85,9 +90,9 @@ export function SettingsPage() {
       a.download = `my-portfolio-backup-${new Date().toISOString().slice(0, 10)}.json`
       a.click()
       URL.revokeObjectURL(url)
-      setBackupMessage('已导出备份文件')
-    } catch (error) {
-      setBackupError(error instanceof Error ? error.message : '导出失败')
+      setBackupMessage(t('settings.backupDone'))
+    } catch {
+      setBackupError(t('settings.backupFailed'))
     }
   }
 
@@ -99,46 +104,61 @@ export function SettingsPage() {
     setBackupMessage('')
     try {
       const parsed = JSON.parse(await file.text())
-      if (!confirm('恢复备份会覆盖当前全部数据，确定继续？')) return
+      if (!confirm(t('settings.restoreConfirm'))) return
       const payload = await importBackup(parsed, realDb)
       setBackupMessage(
-        `已恢复 ${payload.accounts.length} 个账户、${payload.transactions.length} 笔流水`,
+        t('settings.restoreDone', {
+          accounts: payload.accounts.length,
+          transactions: payload.transactions.length,
+        }),
       )
     } catch (error) {
-      setBackupError(error instanceof Error ? error.message : '恢复失败')
+      const key = error instanceof Error ? error.message : ''
+      setBackupError(key.startsWith('backup.') ? t(key) : t('settings.restoreFailed'))
     }
   }
 
   return (
     <div>
       <header className="safe-top px-4 pb-3 pt-6">
-        <h1 className="text-xl font-bold">设置</h1>
+        <h1 className="text-xl font-bold">{t('settings.title')}</h1>
       </header>
 
       <div className="space-y-4 px-4">
         <Card className="p-4">
-          <h2 className="mb-3 text-sm font-semibold">通用</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t('settings.general')}</h2>
           <div className="space-y-3">
-            <Field label="主货币" hint="所有资产将换算为该货币显示">
+            <Field label={t('settings.baseCurrency')} hint={t('settings.baseCurrencyHint')}>
               <Select
                 value={settings.baseCurrency}
                 onChange={(e) => saveSettings({ baseCurrency: e.target.value })}
               >
                 {CURRENCIES.map((c) => (
                   <option key={c.code} value={c.code}>
-                    {c.code} · {c.name}
+                    {c.code} · {t(`currency.${c.code}`)}
                   </option>
                 ))}
               </Select>
             </Field>
-            <Field label="外观">
+            <Field label={t('settings.language')}>
+              <Segmented
+                value={settings.language ?? 'zh'}
+                size="sm"
+                options={[
+                  { value: 'zh', label: '中文' },
+                  { value: 'en', label: 'English' },
+                ]}
+                onChange={(value) => saveSettings({ language: value as Lang })}
+              />
+            </Field>
+            <Field label={t('settings.appearance')}>
               <Segmented
                 value={settings.theme}
                 size="sm"
                 options={[
-                  { value: 'system', label: '跟随系统' },
-                  { value: 'light', label: '浅色' },
-                  { value: 'dark', label: '深色' },
+                  { value: 'system', label: t('settings.theme.system') },
+                  { value: 'light', label: t('settings.theme.light') },
+                  { value: 'dark', label: t('settings.theme.dark') },
                 ]}
                 onChange={(theme) => saveSettings({ theme: theme as ThemePreference })}
               />
@@ -147,20 +167,18 @@ export function SettingsPage() {
         </Card>
 
         <Card className="p-4">
-          <h2 className="mb-1 text-sm font-semibold">行情更新</h2>
-          <p className="mb-3 text-[11px] text-slate-400">
-            投资看长期，自动更新默认每季度一次，避免频繁波动干扰。随时可手动更新。
-          </p>
-          <Field label="自动更新频率">
+          <h2 className="mb-1 text-sm font-semibold">{t('settings.marketUpdates')}</h2>
+          <p className="mb-3 text-[11px] text-slate-400">{t('settings.marketUpdatesHint')}</p>
+          <Field label={t('settings.autoFrequency')}>
             <Select
               value={autoSyncOn ? String(settings.syncIntervalDays ?? 90) : '0'}
               onChange={(e) => changeFrequency(e.target.value)}
             >
-              <option value="1">每天</option>
-              <option value="7">每周</option>
-              <option value="30">每月</option>
-              <option value="90">每季度</option>
-              <option value="0">从不自动更新</option>
+              <option value="1">{t('settings.freq.daily')}</option>
+              <option value="7">{t('settings.freq.weekly')}</option>
+              <option value="30">{t('settings.freq.monthly')}</option>
+              <option value="90">{t('settings.freq.quarterly')}</option>
+              <option value="0">{t('settings.freq.never')}</option>
             </Select>
           </Field>
           <div className="mt-3 space-y-2">
@@ -171,7 +189,7 @@ export function SettingsPage() {
               disabled={sync.loading}
             >
               <RefreshCw size={15} className={sync.loading ? 'animate-spin' : ''} />
-              {sync.loading ? '更新中…' : '立即更新股价与汇率'}
+              {sync.loading ? t('settings.updating') : t('settings.updateNow')}
             </Button>
             {(sync.message || sync.error) && (
               <p className={`text-[11px] ${sync.error ? 'text-rose-500' : 'text-emerald-500'}`}>
@@ -180,24 +198,24 @@ export function SettingsPage() {
             )}
             <p className="text-[11px] text-slate-400">
               {settings.lastSyncAt
-                ? `最近同步：${new Date(settings.lastSyncAt).toLocaleString('zh-CN')}`
-                : '尚未同步过'}
+                ? t('settings.lastSync', {
+                    time: new Date(settings.lastSyncAt).toLocaleString(locale),
+                  })
+                : t('settings.neverSynced')}
             </p>
           </div>
         </Card>
 
         <Card className="p-4">
-          <h2 className="mb-1 text-sm font-semibold">汇率</h2>
+          <h2 className="mb-1 text-sm font-semibold">{t('settings.rates')}</h2>
           <p className="mb-3 text-[11px] text-slate-400">
-            用于把外币资产换算成主货币 {settings.baseCurrency}，仅在总资产、配置、趋势的计算中使用。
+            {t('settings.ratesHint', { base: settings.baseCurrency })}
             {settings.ratesUpdatedAt
-              ? ` · 更新于 ${new Date(settings.ratesUpdatedAt).toLocaleString('zh-CN')}`
+              ? ` · ${new Date(settings.ratesUpdatedAt).toLocaleString(locale)}`
               : ''}
           </p>
           {rateCurrencies.length === 0 ? (
-            <p className="text-[11px] text-slate-400">
-              你当前没有外币账户或持仓，无需设置汇率。
-            </p>
+            <p className="text-[11px] text-slate-400">{t('settings.noForeign')}</p>
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {rateCurrencies.map((c) => (
@@ -215,50 +233,53 @@ export function SettingsPage() {
         </Card>
 
         <Card className="p-4">
-          <h2 className="mb-1 text-sm font-semibold">我的数据</h2>
+          <h2 className="mb-1 text-sm font-semibold">{t('settings.myData')}</h2>
           <p className="mb-3 text-[11px] text-slate-400">
-            当前视图：{mode === 'demo' ? '演示数据' : '我的账户'} · {realAccounts} 个账户 ·{' '}
-            {realHoldings} 项持仓 · {realTransactions} 笔流水 · {realGroups} 个分组
+            {t('settings.dataCounts', {
+              view: t(mode === 'demo' ? 'settings.view.demo' : 'settings.view.real'),
+              accounts: realAccounts,
+              holdings: realHoldings,
+              transactions: realTransactions,
+              groups: realGroups,
+            })}
           </p>
           <div className="space-y-2">
             <Button variant="secondary" className="w-full" onClick={handleExport}>
-              <Download size={15} /> 导出我的数据 (CSV)
+              <Download size={15} /> {t('settings.exportCsv')}
             </Button>
             {mode === 'real' && realAccounts === 0 && (
               <Button variant="secondary" className="w-full" onClick={() => void openDemo()}>
-                <Eye size={15} /> 查看演示数据
+                <Eye size={15} /> {t('settings.viewDemo')}
               </Button>
             )}
             {demoHasData && (
               <Button variant="ghost" className="w-full" onClick={() => void resetDemo()}>
-                重置演示数据
+                {t('settings.resetDemo')}
               </Button>
             )}
           </div>
 
           <div className="mt-4 rounded-xl border border-rose-200 p-3 dark:border-rose-900/50">
-            <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">危险操作</p>
-            <p className="mb-2 mt-0.5 text-[11px] text-slate-400">
-              永久删除你的全部账户与流水，不可撤销。演示数据不受影响。
+            <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+              {t('settings.danger')}
             </p>
+            <p className="mb-2 mt-0.5 text-[11px] text-slate-400">{t('settings.dangerHint')}</p>
             {confirmingClear ? (
               <div className="space-y-2">
-                <p className="text-[11px] text-slate-500">
-                  请输入「清空」二字以确认：
-                </p>
+                <p className="text-[11px] text-slate-500">{t('settings.clearConfirmLabel')}</p>
                 <TextInput
                   value={phrase}
                   onChange={(e) => setPhrase(e.target.value)}
-                  placeholder="清空"
+                  placeholder={clearWord}
                 />
                 <div className="flex gap-2">
                   <Button
                     variant="danger"
                     className="flex-1"
-                    disabled={phrase.trim() !== '清空'}
+                    disabled={phrase.trim() !== clearWord}
                     onClick={handleClear}
                   >
-                    确认清空
+                    {t('settings.clearButton')}
                   </Button>
                   <Button
                     variant="secondary"
@@ -267,39 +288,36 @@ export function SettingsPage() {
                       setPhrase('')
                     }}
                   >
-                    取消
+                    {t('common.cancel')}
                   </Button>
                 </div>
               </div>
             ) : (
               <Button variant="danger" className="w-full" onClick={() => setConfirmingClear(true)}>
-                <Trash2 size={15} /> 清空我的所有数据
+                <Trash2 size={15} /> {t('settings.clearAll')}
               </Button>
             )}
             {cleared && (
               <p className="mt-2 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                已清空你的全部数据。演示数据未受影响。
+                {t('settings.clearedMsg')}
               </p>
             )}
           </div>
         </Card>
 
         <Card className="p-4">
-          <h2 className="mb-1 text-sm font-semibold">备份与恢复</h2>
-          <p className="mb-3 text-[11px] text-slate-400">
-            把全部账户、持仓、流水与设置导出为一个 JSON 文件，可用于迁移到其他设备或留档。
-            恢复会覆盖当前数据。
-          </p>
+          <h2 className="mb-1 text-sm font-semibold">{t('settings.backup')}</h2>
+          <p className="mb-3 text-[11px] text-slate-400">{t('settings.backupHint')}</p>
           <div className="space-y-2">
             <Button variant="secondary" className="w-full" onClick={handleBackup}>
-              <Download size={15} /> 导出备份 (JSON)
+              <Download size={15} /> {t('settings.exportBackup')}
             </Button>
             <Button
               variant="secondary"
               className="w-full"
               onClick={() => fileRef.current?.click()}
             >
-              <Upload size={15} /> 从备份恢复
+              <Upload size={15} /> {t('settings.restoreBackup')}
             </Button>
             <input
               ref={fileRef}
@@ -318,11 +336,8 @@ export function SettingsPage() {
         </Card>
 
         <Card className="p-4">
-          <h2 className="mb-2 text-sm font-semibold">关于</h2>
-          <p className="text-xs leading-relaxed text-slate-400">
-            本地优先的个人资产管理工具。数据仅保存在此浏览器的 IndexedDB 中，不会上传服务器。
-            参考 Percento 的记账理念：只记录重要变动，用资产负债表掌握全局。
-          </p>
+          <h2 className="mb-2 text-sm font-semibold">{t('settings.about')}</h2>
+          <p className="text-xs leading-relaxed text-slate-400">{t('settings.aboutBody')}</p>
           <p className="mt-2 text-[11px] text-slate-400">My Portfolio v0.1.0</p>
         </Card>
       </div>

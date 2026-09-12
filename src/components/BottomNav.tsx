@@ -1,21 +1,23 @@
 import { NavLink } from 'react-router-dom'
 import { Home, Wallet, ListOrdered, LineChart, Settings2 } from 'lucide-react'
+import { useT } from '@/i18n'
 import { cn } from '@/lib/cn'
 
 const items = [
-  { to: '/', label: '首页', icon: Home, end: true },
-  { to: '/accounts', label: '账户', icon: Wallet },
-  { to: '/transactions', label: '流水', icon: ListOrdered },
-  { to: '/trends', label: '趋势', icon: LineChart },
-  { to: '/settings', label: '设置', icon: Settings2 },
+  { to: '/', labelKey: 'nav.home', icon: Home, end: true },
+  { to: '/accounts', labelKey: 'nav.accounts', icon: Wallet },
+  { to: '/transactions', labelKey: 'nav.transactions', icon: ListOrdered },
+  { to: '/trends', labelKey: 'nav.trends', icon: LineChart },
+  { to: '/settings', labelKey: 'nav.settings', icon: Settings2 },
 ]
 
 export function BottomNav() {
+  const { t } = useT()
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center">
       <div className="safe-bottom w-full max-w-md border-t border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
         <div className="flex">
-          {items.map(({ to, label, icon: Icon, end }) => (
+          {items.map(({ to, labelKey, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -30,7 +32,7 @@ export function BottomNav() {
               }
             >
               <Icon size={20} />
-              {label}
+              {t(labelKey)}
             </NavLink>
           ))}
         </div>

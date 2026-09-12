@@ -3,6 +3,7 @@ import { db as realDb } from '@/db/database'
 import { saveSettings } from '@/db/repository'
 import { syncPrices, syncRates } from './sync'
 import { useDataMode } from './DataMode'
+import { useT } from '@/i18n'
 
 export interface SyncState {
   loading: boolean
@@ -12,6 +13,7 @@ export interface SyncState {
 
 export function useSync() {
   const { db: dataDb } = useDataMode()
+  const { t } = useT()
   const [state, setState] = useState<SyncState>({ loading: false })
 
   const run = useCallback(async () => {
@@ -20,8 +22,8 @@ export function useSync() {
       const rates = await syncRates(realDb)
       const prices = await syncPrices(dataDb)
       await saveSettings({ lastSyncAt: Date.now() }, realDb)
-      const parts = [`已更新 ${prices.updated} 项持仓`, `${rates.count} 个汇率`]
-      if (prices.failed > 0) parts.push(`${prices.failed} 项失败`)
+      const parts = [t('sync.updated', { n: prices.updated }), t('sync.rates', { n: rates.count })]
+      if (prices.failed > 0) parts.push(t('sync.failed', { n: prices.failed }))
       setState({ loading: false, message: parts.join(' · ') })
     } catch (error) {
       setState({
@@ -29,7 +31,7 @@ export function useSync() {
         error: error instanceof Error ? error.message : String(error),
       })
     }
-  }, [dataDb])
+  }, [dataDb, t])
 
   return { ...state, run }
 }

@@ -23,6 +23,7 @@ export const FALLBACK_SETTINGS: Settings = {
   id: 'app',
   baseCurrency: DEFAULT_BASE_CURRENCY,
   theme: 'system',
+  language: 'zh',
   rates: { ...DEFAULT_RATES },
   autoSync: true,
   syncIntervalDays: 90,

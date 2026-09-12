@@ -43,6 +43,13 @@ export function currencyMeta(code: CurrencyCode): CurrencyMeta {
   return CURRENCIES.find((c) => c.code === code) ?? { code, symbol: code, name: code }
 }
 
+let formatLocale = 'zh-CN'
+
+/** The UI sets this when the language changes. */
+export function setFormatLocale(locale: string): void {
+  formatLocale = locale
+}
+
 export function convert(
   amount: number,
   from: CurrencyCode,
@@ -62,7 +69,7 @@ export function formatMoney(
   currency: CurrencyCode,
   opts: { compact?: boolean; locale?: string } = {},
 ): string {
-  const locale = opts.locale ?? 'zh-CN'
+  const locale = opts.locale ?? formatLocale
   try {
     return new Intl.NumberFormat(locale, {
       style: 'currency',
@@ -85,7 +92,7 @@ export function formatMoney(
 }
 
 export function formatNumber(amount: number, digits = 2): string {
-  return new Intl.NumberFormat('zh-CN', {
+  return new Intl.NumberFormat(formatLocale, {
     maximumFractionDigits: digits,
     minimumFractionDigits: digits,
   }).format(amount)

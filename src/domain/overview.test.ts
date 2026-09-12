@@ -84,6 +84,16 @@ describe('buildOverview', () => {
     expect(overview.accountsByKind.investment.map((a) => a.account.id)).toEqual(['broker'])
   })
 
+  it('lists holdings by market value descending', () => {
+    const many = [
+      holding({ id: 'small', accountId: 'broker', openingShares: 1, price: 10 }),
+      holding({ id: 'big', accountId: 'broker', openingShares: 1, price: 100 }),
+    ]
+    const ov = buildOverview({ accounts, holdings: many, transactions: [], settings })
+    const broker = ov.accounts.find((a) => a.account.id === 'broker')!
+    expect(broker.holdings.map((h) => h.holding.id)).toEqual(['big', 'small'])
+  })
+
   it('exposes holdings with cost, value and gain', () => {
     const accountView = overview.accounts.find((a) => a.account.id === 'broker')!
     const vti = accountView.holdings.find((h) => h.holding.id === 'vti')!

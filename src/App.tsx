@@ -12,6 +12,7 @@ import { db as realDb } from './db/database'
 import { saveSettings } from './db/repository'
 import { syncPrices, syncRates, isSyncDue } from './store/sync'
 import { DataModeProvider, useDataMode } from './store/DataMode'
+import { I18nProvider, type Lang } from './i18n'
 import { applyTheme, watchSystemTheme, type ThemePreference } from './lib/theme'
 
 const DEFAULT_SYNC_INTERVAL_DAYS = 90
@@ -53,15 +54,17 @@ function AppShell() {
   }, [settings, dataDb])
 
   return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/accounts" element={<Accounts />} />
-        <Route path="/accounts/:id" element={<AccountDetail />} />
-        <Route path="/transactions" element={<Transactions />} />
-        <Route path="/trends" element={<Trends />} />
-        <Route path="/settings" element={<SettingsPage />} />
-      </Routes>
-    </Layout>
+    <I18nProvider lang={(settings?.language as Lang) ?? 'zh'}>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/accounts" element={<Accounts />} />
+          <Route path="/accounts/:id" element={<AccountDetail />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/trends" element={<Trends />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Routes>
+      </Layout>
+    </I18nProvider>
   )
 }

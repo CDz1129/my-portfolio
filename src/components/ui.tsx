@@ -1,5 +1,6 @@
 import { type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react'
 import { cn } from '@/lib/cn'
+import { useT } from '@/i18n'
 
 export function Card({
   children,
@@ -141,6 +142,7 @@ export function Sheet({
   onClose: () => void
   children: ReactNode
 }) {
+  const { t } = useT()
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
@@ -151,7 +153,7 @@ export function Sheet({
           <button
             type="button"
             onClick={onClose}
-            aria-label="关闭"
+            aria-label={t('common.close')}
             className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             ✕

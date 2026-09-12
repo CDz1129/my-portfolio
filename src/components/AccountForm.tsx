@@ -2,14 +2,15 @@ import { useState, type FormEvent } from 'react'
 import type { Account, AccountKind, Group } from '@/domain/types'
 import { CURRENCIES } from '@/domain/currency'
 import type { NewAccountInput } from '@/store/actions'
+import { useT } from '@/i18n'
 import { Button, Field, Segmented, Select, TextInput } from './ui'
 
-const KIND_OPTIONS: { value: AccountKind; label: string }[] = [
-  { value: 'cash', label: '现金' },
-  { value: 'investment', label: '投资' },
-  { value: 'fixed', label: '固定资产' },
-  { value: 'receivable', label: '应收款' },
-  { value: 'liability', label: '负债' },
+const KIND_KEYS: { value: AccountKind; key: string }[] = [
+  { value: 'cash', key: 'kind.cashForm' },
+  { value: 'investment', key: 'kind.investment' },
+  { value: 'fixed', key: 'kind.fixed' },
+  { value: 'receivable', key: 'kind.receivable' },
+  { value: 'liability', key: 'kind.liability' },
 ]
 
 export function AccountForm({
@@ -23,6 +24,7 @@ export function AccountForm({
   onSubmit: (input: NewAccountInput) => void | Promise<void>
   onCancel?: () => void
 }) {
+  const { t } = useT()
   const [name, setName] = useState(initial?.name ?? '')
   const [kind, setKind] = useState<AccountKind>(initial?.kind ?? 'cash')
   const [currency, setCurrency] = useState(initial?.currency ?? 'CNY')
@@ -35,7 +37,7 @@ export function AccountForm({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (!name.trim()) {
-      setError('请输入账户名称')
+      setError(t('accountForm.nameRequired'))
       return
     }
     setError('')
@@ -48,37 +50,39 @@ export function AccountForm({
     })
   }
 
+  const isInvestment = kind === 'investment'
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Field label="账户名称" error={error}>
+      <Field label={t('accountForm.name')} error={error}>
         <TextInput
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="例如：招商银行、美股券商"
+          placeholder={t('accountForm.namePlaceholder')}
         />
       </Field>
 
-      <Field label="类型">
-        <Segmented value={kind} options={KIND_OPTIONS} onChange={setKind} />
+      <Field label={t('accountForm.type')}>
+        <Segmented
+          value={kind}
+          options={KIND_KEYS.map((k) => ({ value: k.value, label: t(k.key) }))}
+          onChange={setKind}
+        />
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="币种">
+        <Field label={t('accountForm.currency')}>
           <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
             {CURRENCIES.map((c) => (
               <option key={c.code} value={c.code}>
-                {c.code} · {c.name}
+                {c.code} · {t(`currency.${c.code}`)}
               </option>
             ))}
           </Select>
         </Field>
         <Field
-          label={kind === 'investment' ? '现金余额' : '期初余额'}
-          hint={
-            kind === 'investment'
-              ? '这里填账户里的现金，持仓市值请到账户里单独添加，避免重复计算'
-              : undefined
-          }
+          label={t(isInvestment ? 'accountForm.cashBalance' : 'accountForm.openingBalance')}
+          hint={isInvestment ? t('accountForm.cashHint') : undefined}
         >
           <TextInput
             type="number"
@@ -90,9 +94,9 @@ export function AccountForm({
       </div>
 
       {groups.length > 0 && (
-        <Field label="分组">
+        <Field label={t('accountForm.group')}>
           <Select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-            <option value="">不分组</option>
+            <option value="">{t('accountForm.noGroup')}</option>
             {groups.map((g) => (
               <option key={g.id} value={g.id}>
                 {g.name}
@@ -104,11 +108,11 @@ export function AccountForm({
 
       <div className="flex gap-2 pt-1">
         <Button type="submit" className="flex-1">
-          保存
+          {t('common.save')}
         </Button>
         {onCancel && (
           <Button type="button" variant="secondary" onClick={onCancel}>
-            取消
+            {t('common.cancel')}
           </Button>
         )}
       </div>

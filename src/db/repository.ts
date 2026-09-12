@@ -23,6 +23,7 @@ export async function getSettings(database: PortfolioDB = defaultDb): Promise<Se
     id: SETTINGS_ID,
     baseCurrency: DEFAULT_BASE_CURRENCY,
     theme: 'system',
+    language: 'zh',
     rates: { ...DEFAULT_RATES },
     autoSync: true,
     syncIntervalDays: 90,
@@ -570,21 +571,21 @@ export async function exportBackup(database: PortfolioDB = defaultDb): Promise<B
   }
 }
 
-function assertArray(value: unknown, field: string): unknown[] {
-  if (!Array.isArray(value)) throw new Error(`备份文件缺少有效的「${field}」列表`)
+function assertArray(value: unknown): unknown[] {
+  if (!Array.isArray(value)) throw new Error('backup.missingList')
   return value
 }
 
 export function validateBackup(value: unknown): BackupPayload {
-  if (!value || typeof value !== 'object') throw new Error('备份文件格式不正确')
+  if (!value || typeof value !== 'object') throw new Error('backup.invalid')
   const payload = value as Partial<BackupPayload>
-  if (payload.app !== BACKUP_APP) throw new Error('这不是本应用的备份文件')
-  const accounts = assertArray(payload.accounts, '账户') as Account[]
-  const holdings = assertArray(payload.holdings, '持仓') as Holding[]
-  const groups = assertArray(payload.groups, '分组') as Group[]
-  const transactions = assertArray(payload.transactions, '流水') as Transaction[]
+  if (payload.app !== BACKUP_APP) throw new Error('backup.notOurs')
+  const accounts = assertArray(payload.accounts) as Account[]
+  const holdings = assertArray(payload.holdings) as Holding[]
+  const groups = assertArray(payload.groups) as Group[]
+  const transactions = assertArray(payload.transactions) as Transaction[]
   if (accounts.some((a) => !a || typeof a.id !== 'string')) {
-    throw new Error('备份中的账户数据损坏')
+    throw new Error('backup.corrupt')
   }
   return {
     app: BACKUP_APP,

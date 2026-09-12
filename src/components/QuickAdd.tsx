@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeftRight, PlusCircle, RefreshCw, TrendingUp, Wallet } from 'lucide-react'
 import { usePortfolioData } from '@/store/usePortfolio'
 import { createAccount, recordTransaction } from '@/store/actions'
+import { useT } from '@/i18n'
 import { AccountForm } from './AccountForm'
 import { TransactionForm } from './TransactionForm'
 import { Sheet } from './ui'
@@ -10,6 +11,7 @@ type Mode = 'menu' | 'tx' | 'account'
 
 export function QuickAdd({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { accounts, holdings, groups, db } = usePortfolioData()
+  const { t } = useT()
   const [mode, setMode] = useState<Mode>('menu')
 
   useEffect(() => {
@@ -17,9 +19,9 @@ export function QuickAdd({ open, onClose }: { open: boolean; onClose: () => void
   }, [open])
 
   const titles: Record<Mode, string> = {
-    menu: '添加',
-    tx: '记一笔',
-    account: '添加账户',
+    menu: t('tx.quickAddTitle'),
+    tx: t('tx.quickAddTx'),
+    account: t('tx.quickAddAccount'),
   }
 
   return (
@@ -28,26 +30,26 @@ export function QuickAdd({ open, onClose }: { open: boolean; onClose: () => void
         <div className="grid grid-cols-2 gap-3">
           <MenuButton
             icon={<PlusCircle size={22} />}
-            title="记一笔"
-            subtitle="收入 / 支出 / 转账"
+            title={t('tx.menuTx')}
+            subtitle={t('tx.menuTxSub')}
             onClick={() => setMode('tx')}
           />
           <MenuButton
             icon={<Wallet size={22} />}
-            title="添加账户"
-            subtitle="现金 / 投资 / 负债"
+            title={t('tx.menuAccount')}
+            subtitle={t('tx.menuAccountSub')}
             onClick={() => setMode('account')}
           />
           <MenuButton
             icon={<ArrowLeftRight size={22} />}
-            title="月末盘点"
-            subtitle="用调整校准余额"
+            title={t('tx.menuAdjust')}
+            subtitle={t('tx.menuAdjustSub')}
             onClick={() => setMode('tx')}
           />
           <MenuButton
             icon={<TrendingUp size={22} />}
-            title="更新持仓"
-            subtitle="修改股数与价格"
+            title={t('tx.menuHolding')}
+            subtitle={t('tx.menuHoldingSub')}
             onClick={() => setMode('tx')}
           />
         </div>
@@ -55,7 +57,7 @@ export function QuickAdd({ open, onClose }: { open: boolean; onClose: () => void
 
       {mode === 'tx' && (
         <>
-          <BackButton onClick={() => setMode('menu')} />
+          <BackButton label={t('common.back')} onClick={() => setMode('menu')} />
           <TransactionForm
             accounts={accounts}
             holdings={holdings}
@@ -70,7 +72,7 @@ export function QuickAdd({ open, onClose }: { open: boolean; onClose: () => void
 
       {mode === 'account' && (
         <>
-          <BackButton onClick={() => setMode('menu')} />
+          <BackButton label={t('common.back')} onClick={() => setMode('menu')} />
           <AccountForm
             groups={groups}
             onCancel={onClose}
@@ -109,14 +111,14 @@ function MenuButton({
   )
 }
 
-function BackButton({ onClick }: { onClick: () => void }) {
+function BackButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className="mb-3 flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
     >
-      <RefreshCw size={12} /> 返回
+      <RefreshCw size={12} /> {label}
     </button>
   )
 }

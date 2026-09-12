@@ -20,6 +20,7 @@ import {
 } from '@/domain/types'
 import { CURRENCIES, convert, formatMoney } from '@/domain/currency'
 import { getQuotes, type AssetSearchResult } from '@/lib/marketApi'
+import { useT } from '@/i18n'
 import { AssetSearch } from '@/components/AssetSearch'
 import { Button, Card, Field, Select, Sheet, TextInput } from '@/components/ui'
 import { cn } from '@/lib/cn'
@@ -28,6 +29,7 @@ export function AccountDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { accounts, transactions, overview, settings, db } = usePortfolioData()
+  const { t } = useT()
   const base = settings.baseCurrency
 
   const account = accounts.find((a) => a.id === id)
@@ -41,9 +43,9 @@ export function AccountDetail() {
   if (!account || !view) {
     return (
       <div className="p-8 text-center text-sm text-slate-400">
-        账户不存在
+        {t('detail.notFound')}
         <Button variant="secondary" className="mt-4" onClick={() => navigate('/accounts')}>
-          返回
+          {t('common.back')}
         </Button>
       </div>
     )
@@ -60,7 +62,7 @@ export function AccountDetail() {
           onClick={() => navigate(-1)}
           className="mb-3 flex items-center gap-1 text-sm text-slate-400"
         >
-          <ChevronLeft size={16} /> 返回
+          <ChevronLeft size={16} /> {t('common.back')}
         </button>
         <div className="flex items-start justify-between">
           <div>
@@ -83,7 +85,7 @@ export function AccountDetail() {
       <div className="space-y-4 px-4">
         <div className="flex gap-2">
           <Button variant="secondary" className="flex-1" onClick={() => setAdjustOpen(true)}>
-            <Pencil size={15} /> 调整余额
+            <Pencil size={15} /> {t('detail.adjustBalance')}
           </Button>
           <Button
             variant="secondary"
@@ -91,12 +93,12 @@ export function AccountDetail() {
               await archiveAccount(account.id, !account.archived, db)
             }}
           >
-            {account.archived ? '取消归档' : '归档'}
+            {account.archived ? t('detail.unarchive') : t('detail.archive')}
           </Button>
           <Button
             variant="danger"
             onClick={async () => {
-              if (!confirm(`删除「${account.name}」及其记录？`)) return
+              if (!confirm(t('detail.deleteConfirm', { name: account.name }))) return
               await deleteAccount(account.id, db)
               navigate('/accounts')
             }}
@@ -108,7 +110,7 @@ export function AccountDetail() {
         {account.kind === 'investment' && (
           <Card className="overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3">
-              <h2 className="text-sm font-semibold">持仓</h2>
+              <h2 className="text-sm font-semibold">{t('detail.holdings')}</h2>
               <button
                 type="button"
                 onClick={() => {
@@ -117,7 +119,7 @@ export function AccountDetail() {
                 }}
                 className="flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400"
               >
-                <Plus size={14} /> 添加
+                <Plus size={14} /> {t('common.add')}
               </button>
             </div>
             <div className="divide-y divide-slate-100 border-t border-slate-100 dark:divide-slate-800 dark:border-slate-800">
@@ -134,7 +136,10 @@ export function AccountDetail() {
                   <div>
                     <p className="text-sm font-medium">{h.holding.symbol}</p>
                     <p className="text-[11px] text-slate-400">
-                      {h.shares} 股 · 成本 {formatMoney(h.holding.avgCost, h.holding.currency)}
+                      {t('detail.sharesCost', {
+                        shares: h.shares,
+                        cost: formatMoney(h.holding.avgCost, h.holding.currency),
+                      })}
                     </p>
                   </div>
                   <div className="text-right">
@@ -152,19 +157,19 @@ export function AccountDetail() {
                 </button>
               ))}
               {view.holdings.length === 0 && (
-                <p className="px-4 py-6 text-center text-xs text-slate-400">暂无持仓</p>
+                <p className="px-4 py-6 text-center text-xs text-slate-400">{t('detail.noHoldings')}</p>
               )}
             </div>
           </Card>
         )}
 
         <Card className="overflow-hidden">
-          <div className="px-4 py-3 text-sm font-semibold">账户流水</div>
+          <div className="px-4 py-3 text-sm font-semibold">{t('detail.transactions')}</div>
           <div className="divide-y divide-slate-100 border-t border-slate-100 dark:divide-slate-800 dark:border-slate-800">
             {accountTxs.map((tx) => (
               <div key={tx.id} className="flex items-center justify-between px-4 py-3">
                 <div>
-                  <p className="text-sm">{txTypeLabel(tx.type)}</p>
+                  <p className="text-sm">{t(`txType.${tx.type}`)}</p>
                   <p className="text-[11px] text-slate-400">
                     {tx.date}
                     {tx.note ? ` · ${tx.note}` : ''}
@@ -179,14 +184,14 @@ export function AccountDetail() {
                     )}
                   >
                     {tx.type === 'buy' || tx.type === 'sell'
-                      ? `${tx.shares} 股 @ ${tx.price}`
+                      ? `${tx.shares} @ ${tx.price}`
                       : formatMoney(nativeToBase(tx.amount), base)}
                   </p>
                 </div>
               </div>
             ))}
             {accountTxs.length === 0 && (
-              <p className="px-4 py-6 text-center text-xs text-slate-400">暂无流水</p>
+              <p className="px-4 py-6 text-center text-xs text-slate-400">{t('detail.noTransactions')}</p>
             )}
           </div>
         </Card>
@@ -205,7 +210,7 @@ export function AccountDetail() {
               accountId: account.id,
               amount,
               currency: account.currency,
-              note: '调整余额',
+              note: t('detail.adjustNote'),
             },
             db,
           )
@@ -221,7 +226,7 @@ export function AccountDetail() {
         onDelete={
           editingHolding
             ? async () => {
-                if (!confirm(`删除持仓 ${editingHolding.symbol}？`)) return
+                if (!confirm(t('detail.deleteHoldingConfirm', { symbol: editingHolding.symbol }))) return
                 await deleteHolding(editingHolding.id, db)
                 setHoldingOpen(false)
               }
@@ -240,18 +245,6 @@ export function AccountDetail() {
   )
 }
 
-function txTypeLabel(type: string): string {
-  const map: Record<string, string> = {
-    income: '收入',
-    expense: '支出',
-    transfer: '转账',
-    buy: '买入',
-    sell: '卖出',
-    adjust: '余额调整',
-  }
-  return map[type] ?? type
-}
-
 function AdjustBalanceSheet({
   open,
   account,
@@ -266,16 +259,17 @@ function AdjustBalanceSheet({
   onSubmit: (amount: number) => void | Promise<void>
 }) {
   const [value, setValue] = useState(String(current))
+  const { t } = useT()
   useEffect(() => {
     if (open) setValue(String(current))
   }, [open, current])
   return (
-    <Sheet open={open} title="调整余额" onClose={onClose}>
+    <Sheet open={open} title={t('detail.adjustTitle')} onClose={onClose}>
       <div className="space-y-4">
         <p className="text-xs text-slate-400">
-          用于月末盘点：直接填写账户当前的实际余额（{account.currency}），系统会记录一笔调整。
+          {t('detail.adjustHint', { currency: account.currency })}
         </p>
-        <Field label={`当前余额（${account.currency}）`}>
+        <Field label={t('detail.currentBalance', { currency: account.currency })}>
           <TextInput
             type="number"
             inputMode="decimal"
@@ -284,7 +278,7 @@ function AdjustBalanceSheet({
           />
         </Field>
         <Button className="w-full" onClick={() => onSubmit(Number(value) || 0)}>
-          保存
+          {t('common.save')}
         </Button>
       </div>
     </Sheet>
@@ -323,6 +317,7 @@ function HoldingSheet({
   const [price, setPrice] = useState(String(holding?.price ?? 0))
   const [priceLoading, setPriceLoading] = useState(false)
   const [priceAuto, setPriceAuto] = useState(false)
+  const { t } = useT()
 
   useEffect(() => {
     if (!open) return
@@ -364,36 +359,36 @@ function HoldingSheet({
   }
 
   return (
-    <Sheet open={open} title={holding ? '编辑持仓' : '添加持仓'} onClose={onClose}>
+    <Sheet open={open} title={holding ? t('detail.editHolding') : t('detail.addHolding')} onClose={onClose}>
       <div className="space-y-4">
         {!holding && (
           <div>
             <p className="mb-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
-              搜索资产（自动带出名称与实时现价）
+              {t('detail.searchHint')}
             </p>
             <AssetSearch onSelect={handleSelect} />
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="代码">
+          <Field label={t('detail.code')}>
             <TextInput value={symbol} onChange={(e) => setSymbol(e.target.value)} />
           </Field>
-          <Field label="名称">
+          <Field label={t('detail.name')}>
             <TextInput value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="市场">
+          <Field label={t('detail.market')}>
             <Select value={market} onChange={(e) => setMarket(e.target.value as Holding['market'])}>
-              <option value="A">A股</option>
-              <option value="HK">港股</option>
-              <option value="US">美股</option>
-              <option value="CRYPTO">加密货币</option>
-              <option value="CUSTOM">自定义</option>
+              <option value="A">{t('market.A')}</option>
+              <option value="HK">{t('market.HK')}</option>
+              <option value="US">{t('market.US')}</option>
+              <option value="CRYPTO">{t('market.CRYPTO')}</option>
+              <option value="CUSTOM">{t('market.CUSTOM')}</option>
             </Select>
           </Field>
-          <Field label="币种">
+          <Field label={t('detail.currency')}>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
               {CURRENCIES.map((c) => (
                 <option key={c.code} value={c.code}>
@@ -404,7 +399,7 @@ function HoldingSheet({
           </Field>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <Field label="期初股数">
+          <Field label={t('detail.openingShares')}>
             <TextInput
               type="number"
               inputMode="decimal"
@@ -412,7 +407,7 @@ function HoldingSheet({
               onChange={(e) => setShares(e.target.value)}
             />
           </Field>
-          <Field label="成本价">
+          <Field label={t('detail.avgCost')}>
             <TextInput
               type="number"
               inputMode="decimal"
@@ -420,7 +415,10 @@ function HoldingSheet({
               onChange={(e) => setAvgCost(e.target.value)}
             />
           </Field>
-          <Field label="现价" hint={priceAuto ? '已自动获取实时价，可修改' : undefined}>
+          <Field
+            label={t('detail.price')}
+            hint={priceAuto ? t('detail.priceAuto') : undefined}
+          >
             <div className="flex gap-1.5">
               <TextInput
                 type="number"
@@ -430,7 +428,7 @@ function HoldingSheet({
               />
               <button
                 type="button"
-                aria-label="刷新现价"
+                aria-label={t('detail.refreshPrice')}
                 disabled={priceLoading}
                 onClick={() => loadPrice(market, symbol)}
                 className="flex w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
@@ -455,7 +453,7 @@ function HoldingSheet({
               })
             }
           >
-            保存
+            {t('common.save')}
           </Button>
           {onDelete && (
             <Button variant="danger" onClick={onDelete}>

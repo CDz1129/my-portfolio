@@ -2,16 +2,17 @@ import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { formatMoney, formatNumber, formatPercent } from '@/domain/currency'
 import type { Summary } from '@/domain/portfolio'
+import { useT } from '@/i18n'
 import { cn } from '@/lib/cn'
 
 export type NetWorthDisplay = 'net' | 'assets' | 'liabilities'
 
 export const DISPLAY_ORDER: NetWorthDisplay[] = ['net', 'assets', 'liabilities']
 
-const LABELS: Record<NetWorthDisplay, string> = {
-  net: '我的净资产',
-  assets: '我的总资产',
-  liabilities: '我的总负债',
+const LABEL_KEYS: Record<NetWorthDisplay, string> = {
+  net: 'networth.net',
+  assets: 'networth.assets',
+  liabilities: 'networth.liabilities',
 }
 
 export function nextDisplay(current: NetWorthDisplay): NetWorthDisplay {
@@ -32,6 +33,7 @@ export function NetWorthHero({
   change30d?: number
 }) {
   const [hidden, setHidden] = useState(false)
+  const { t } = useT()
   const value =
     display === 'net'
       ? summary.net
@@ -50,11 +52,11 @@ export function NetWorthHero({
           onClick={() => onDisplayChange(nextDisplay(display))}
           className="text-sm font-medium text-slate-400 transition-colors hover:text-slate-200"
         >
-          {LABELS[display]}
+          {t(LABEL_KEYS[display])}
         </button>
         <button
           type="button"
-          aria-label={hidden ? '显示金额' : '隐藏金额'}
+          aria-label={hidden ? t('networth.show') : t('networth.hide')}
           onClick={() => setHidden((v) => !v)}
           className="text-slate-400 transition-colors hover:text-slate-200"
         >
@@ -74,7 +76,7 @@ export function NetWorthHero({
 
       {display === 'net' && change30d !== 0 && (
         <div className="mt-2 flex items-center justify-center gap-2 text-xs">
-          <span className="text-slate-400">近 30 天</span>
+          <span className="text-slate-400">{t('networth.last30')}</span>
           <span
             className={cn(
               'font-semibold',

@@ -1,15 +1,16 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import type { Account, Holding, TxType } from '@/domain/types'
 import type { NewTransactionInput } from '@/store/actions'
+import { useT } from '@/i18n'
 import { Button, Field, Segmented, Select, TextInput } from './ui'
 
-const TYPE_OPTIONS: { value: TxType; label: string }[] = [
-  { value: 'expense', label: '支出' },
-  { value: 'income', label: '收入' },
-  { value: 'transfer', label: '转账' },
-  { value: 'buy', label: '买入' },
-  { value: 'sell', label: '卖出' },
-  { value: 'adjust', label: '调整' },
+const TYPE_KEYS: { value: TxType; key: string }[] = [
+  { value: 'expense', key: 'txType.expense' },
+  { value: 'income', key: 'txType.income' },
+  { value: 'transfer', key: 'txType.transfer' },
+  { value: 'buy', key: 'txType.buy' },
+  { value: 'sell', key: 'txType.sell' },
+  { value: 'adjust', key: 'txType.adjustForm' },
 ]
 
 function today(): string {
@@ -29,6 +30,7 @@ export function TransactionForm({
   onSubmit: (input: NewTransactionInput) => void | Promise<void>
   onCancel?: () => void
 }) {
+  const { t } = useT()
   const active = accounts.filter((a) => !a.archived)
   const [type, setType] = useState<TxType>(defaultType)
   const [date, setDate] = useState(today())
@@ -39,7 +41,7 @@ export function TransactionForm({
   const [shares, setShares] = useState('')
   const [price, setPrice] = useState('')
   const [note, setNote] = useState('')
-  const [error, setError] = useState('')
+  const [errorKey, setErrorKey] = useState('')
 
   const accountHoldings = useMemo(
     () => holdings.filter((h) => h.accountId === accountId),
@@ -52,27 +54,27 @@ export function TransactionForm({
 
   function reset(next: TxType) {
     setType(next)
-    setError('')
+    setErrorKey('')
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!accountId) return setError('请选择账户')
+    if (!accountId) return setErrorKey('tx.selectAccount')
 
     const account = accounts.find((a) => a.id === accountId)
     const holding = holdings.find((h) => h.id === holdingId)
 
     if (isTrade) {
-      if (!holdingId) return setError('请选择持仓')
-      if (!shares || Number(shares) <= 0) return setError('请输入有效股数')
+      if (!holdingId) return setErrorKey('tx.selectHolding')
+      if (!shares || Number(shares) <= 0) return setErrorKey('tx.invalidShares')
     } else if (type === 'transfer') {
-      if (!toAccountId) return setError('请选择目标账户')
-      if (Number(amount) <= 0) return setError('请输入有效金额')
+      if (!toAccountId) return setErrorKey('tx.selectToAccount')
+      if (Number(amount) <= 0) return setErrorKey('tx.invalidAmount')
     } else if (Number(amount) <= 0) {
-      return setError('请输入有效金额')
+      return setErrorKey('tx.invalidAmount')
     }
 
-    setError('')
+    setErrorKey('')
     const input: NewTransactionInput = {
       type,
       date,
@@ -92,9 +94,14 @@ export function TransactionForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Segmented value={type} options={TYPE_OPTIONS} onChange={reset} size="sm" />
+      <Segmented
+        value={type}
+        options={TYPE_KEYS.map((k) => ({ value: k.value, label: t(k.key) }))}
+        onChange={reset}
+        size="sm"
+      />
 
-      <Field label="账户">
+      <Field label={t('tx.accountLabel')}>
         <Select
           value={accountId}
           onChange={(e) => {
@@ -103,7 +110,7 @@ export function TransactionForm({
             setToAccountId('')
           }}
         >
-          <option value="">请选择</option>
+          <option value="">{t('common.select')}</option>
           {active.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name} · {a.currency}
@@ -113,9 +120,12 @@ export function TransactionForm({
       </Field>
 
       {type === 'transfer' && (
-        <Field label="目标账户" error={error.startsWith('请选择目标') ? error : undefined}>
+        <Field
+          label={t('tx.toAccountLabel')}
+          error={errorKey === 'tx.selectToAccount' ? t(errorKey) : undefined}
+        >
           <Select value={toAccountId} onChange={(e) => setToAccountId(e.target.value)}>
-            <option value="">请选择</option>
+            <option value="">{t('common.select')}</option>
             {destinationAccounts.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name} · {a.currency}
@@ -127,9 +137,12 @@ export function TransactionForm({
 
       {isTrade && (
         <>
-          <Field label="持仓" error={error.startsWith('请选择持仓') ? error : undefined}>
+          <Field
+            label={t('tx.holdingLabel')}
+            error={errorKey === 'tx.selectHolding' ? t(errorKey) : undefined}
+          >
             <Select value={holdingId} onChange={(e) => setHoldingId(e.target.value)}>
-              <option value="">请选择</option>
+              <option value="">{t('common.select')}</option>
               {accountHoldings.map((h) => (
                 <option key={h.id} value={h.id}>
                   {h.name ? `${h.symbol} ${h.name}` : h.symbol}
@@ -138,7 +151,10 @@ export function TransactionForm({
             </Select>
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="股数" error={error.startsWith('请输入有效股数') ? error : undefined}>
+            <Field
+              label={t('tx.sharesLabel')}
+              error={errorKey === 'tx.invalidShares' ? t(errorKey) : undefined}
+            >
               <TextInput
                 type="number"
                 inputMode="decimal"
@@ -146,13 +162,13 @@ export function TransactionForm({
                 onChange={(e) => setShares(e.target.value)}
               />
             </Field>
-            <Field label="价格">
+            <Field label={t('tx.priceLabel')}>
               <TextInput
                 type="number"
                 inputMode="decimal"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                placeholder="留空用现价"
+                placeholder={t('tx.pricePlaceholder')}
               />
             </Field>
           </div>
@@ -160,7 +176,10 @@ export function TransactionForm({
       )}
 
       {showsAmount && (
-        <Field label="金额" error={error.startsWith('请输入有效金额') ? error : undefined}>
+        <Field
+          label={t('tx.amountLabel')}
+          error={errorKey === 'tx.invalidAmount' ? t(errorKey) : undefined}
+        >
           <TextInput
             type="number"
             inputMode="decimal"
@@ -172,25 +191,29 @@ export function TransactionForm({
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="日期">
+        <Field label={t('tx.dateLabel')}>
           <TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Field>
-        <Field label="备注">
-          <TextInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="可选" />
+        <Field label={t('tx.noteLabel')}>
+          <TextInput
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={t('common.optional')}
+          />
         </Field>
       </div>
 
-      {error && !error.startsWith('请选择目标') && !error.startsWith('请选择持仓') && !error.startsWith('请输入有效股数') && !error.startsWith('请输入有效金额') && (
-        <p className="text-xs text-rose-500">{error}</p>
+      {errorKey === 'tx.selectAccount' && (
+        <p className="text-xs text-rose-500">{t(errorKey)}</p>
       )}
 
       <div className="flex gap-2 pt-1">
         <Button type="submit" className="flex-1">
-          保存
+          {t('common.save')}
         </Button>
         {onCancel && (
           <Button type="button" variant="secondary" onClick={onCancel}>
-            取消
+            {t('common.cancel')}
           </Button>
         )}
       </div>

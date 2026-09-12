@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Search } from 'lucide-react'
 import { searchAssets, type AssetSearchResult } from '@/lib/marketApi'
-import { MARKET_LABEL } from '@/domain/types'
+import { useT } from '@/i18n'
 import { TextInput } from './ui'
 
 export function AssetSearch({ onSelect }: { onSelect: (result: AssetSearchResult) => void }) {
+  const { t } = useT()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<AssetSearchResult[]>([])
   const [loading, setLoading] = useState(false)
@@ -30,7 +31,7 @@ export function AssetSearch({ onSelect }: { onSelect: (result: AssetSearchResult
         }
       } catch {
         if (!cancelled) {
-          setError('搜索失败，请检查本地服务或手动填写')
+          setError(t('search.failed'))
           setResults([])
         }
       } finally {
@@ -41,22 +42,22 @@ export function AssetSearch({ onSelect }: { onSelect: (result: AssetSearchResult
       cancelled = true
       clearTimeout(timer)
     }
-  }, [query])
+  }, [query, t])
 
   return (
     <div className="relative">
       <div className="relative">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <TextInput
-          aria-label="搜索资产"
+          aria-label={t('search.aria')}
           className="pl-9"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="搜索代码或名称，如 600519 / 腾讯 / AAPL"
+          placeholder={t('search.placeholder')}
         />
       </div>
 
-      {loading && <p className="mt-1 text-xs text-slate-400">搜索中…</p>}
+      {loading && <p className="mt-1 text-xs text-slate-400">{t('search.searching')}</p>}
       {error && <p className="mt-1 text-xs text-amber-500">{error}</p>}
 
       {open && results.length > 0 && (
@@ -75,7 +76,7 @@ export function AssetSearch({ onSelect }: { onSelect: (result: AssetSearchResult
                 <span className="min-w-0">
                   <span className="block truncate text-sm">{result.name || result.symbol}</span>
                   <span className="text-[11px] text-slate-400">
-                    {result.symbol} · {MARKET_LABEL[result.market]}
+                    {result.symbol} · {t(`market.${result.market}`)}
                     {result.exchange ? ` · ${result.exchange}` : ''}
                   </span>
                 </span>

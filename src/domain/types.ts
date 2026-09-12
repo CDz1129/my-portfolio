@@ -60,6 +60,7 @@ export interface Settings {
   id: 'app'
   baseCurrency: CurrencyCode
   theme: 'light' | 'dark' | 'system'
+  language?: 'zh' | 'en'
   rates: Record<CurrencyCode, number>
   ratesUpdatedAt?: number
   autoSync?: boolean
