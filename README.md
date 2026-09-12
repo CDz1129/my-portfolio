@@ -51,7 +51,7 @@
 
 ## 快速开始
 
-要求 Node 18+。
+要求 Node 22+（Cloudflare 部署所用的 wrangler 需要 Node 22 以上）。
 
 ```bash
 npm install

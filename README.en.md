@@ -51,7 +51,7 @@ Data is bound to "the same browser + the same origin": clearing site data, using
 
 ## Quick start
 
-Requires Node 18+.
+Requires Node 22+ (the wrangler used for Cloudflare deployment needs Node 22 or newer).
 
 ```bash
 npm install
