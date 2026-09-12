@@ -72,7 +72,14 @@ export function AccountForm({
             ))}
           </Select>
         </Field>
-        <Field label="期初余额">
+        <Field
+          label={kind === 'investment' ? '现金余额' : '期初余额'}
+          hint={
+            kind === 'investment'
+              ? '这里填账户里的现金，持仓市值请到账户里单独添加，避免重复计算'
+              : undefined
+          }
+        >
           <TextInput
             type="number"
             inputMode="decimal"

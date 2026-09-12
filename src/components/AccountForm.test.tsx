@@ -59,4 +59,11 @@ describe('AccountForm', () => {
     expect(screen.getByLabelText('账户名称')).toHaveValue('旧账户')
     expect(screen.getByLabelText('期初余额')).toHaveValue(99)
   })
+
+  it('explains that investment accounts track cash here and holdings separately', async () => {
+    render(<AccountForm groups={groups} onSubmit={vi.fn()} />)
+    await userEvent.click(screen.getByRole('button', { name: '投资' }))
+    expect(screen.getByLabelText('现金余额')).toBeInTheDocument()
+    expect(screen.getByText(/持仓市值/)).toBeInTheDocument()
+  })
 })
