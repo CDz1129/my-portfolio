@@ -74,6 +74,7 @@ export function formatMoney(
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency,
+      currencyDisplay: 'narrowSymbol',
       notation: opts.compact ? 'compact' : 'standard',
       maximumFractionDigits: opts.compact ? 1 : 2,
       minimumFractionDigits: opts.compact ? 0 : 2,

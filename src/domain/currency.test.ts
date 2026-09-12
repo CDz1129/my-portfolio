@@ -30,6 +30,12 @@ describe('formatMoney', () => {
     expect(out).toMatch(/¥|CNY/)
   })
 
+  it('uses only the currency symbol, never the letter code', () => {
+    const out = formatMoney(1000, 'CNY', { locale: 'en-US' })
+    expect(out).toContain('¥')
+    expect(out).not.toMatch(/CN/)
+  })
+
   it('supports compact notation for large numbers', () => {
     const out = formatMoney(12345678, 'CNY', { compact: true })
     expect(out).toMatch(/1234\.|1,234|万|M|K/)
