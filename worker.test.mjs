@@ -31,3 +31,30 @@ describe('cloudflare worker', () => {
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*')
   })
 })
+
+describe('cloudflare worker token gate', () => {
+  const secured = { ...env, API_TOKEN: 's3cret' }
+
+  it('rejects api calls without a token once API_TOKEN is set', async () => {
+    const res = await worker.fetch(new Request('https://example.com/api/health'), secured)
+    expect(res.status).toBe(401)
+  })
+
+  it('accepts a matching header token', async () => {
+    const res = await worker.fetch(
+      new Request('https://example.com/api/health', {
+        headers: { 'X-API-Token': 's3cret' },
+      }),
+      secured,
+    )
+    expect(res.status).toBe(200)
+  })
+
+  it('accepts a matching query token', async () => {
+    const res = await worker.fetch(
+      new Request('https://example.com/api/health?token=s3cret'),
+      secured,
+    )
+    expect(res.status).toBe(200)
+  })
+})

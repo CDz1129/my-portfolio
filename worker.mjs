@@ -9,7 +9,15 @@ import {
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-API-Token',
+}
+
+// Cache successful market responses at the edge to cut upstream calls.
+const CACHE_TTL_SECONDS = {
+  '/api/quotes': 60,
+  '/api/quote': 60,
+  '/api/rates': 300,
+  '/api/search': 300,
 }
 
 function json(data, status = 200) {
@@ -21,6 +29,20 @@ function json(data, status = 200) {
       ...CORS,
     },
   })
+}
+
+function withHeader(res, name, value) {
+  const headers = new Headers(res.headers)
+  headers.set(name, value)
+  return new Response(res.body, { status: res.status, headers })
+}
+
+function authorized(request, url, env) {
+  if (!env.API_TOKEN) return true
+  return (
+    request.headers.get('x-api-token') === env.API_TOKEN ||
+    url.searchParams.get('token') === env.API_TOKEN
+  )
 }
 
 async function handleApi(url) {
@@ -59,16 +81,39 @@ async function handleApi(url) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url)
 
-    if (url.pathname.startsWith('/api/')) {
-      if (request.method === 'OPTIONS') {
-        return new Response(null, { status: 204, headers: CORS })
-      }
-      return handleApi(url)
+    if (!url.pathname.startsWith('/api/')) {
+      return env.ASSETS.fetch(request)
     }
 
-    return env.ASSETS.fetch(request)
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: CORS })
+    }
+
+    if (!authorized(request, url, env)) {
+      return json({ error: 'unauthorized' }, 401)
+    }
+
+    const ttl = CACHE_TTL_SECONDS[url.pathname] ?? 0
+    const cache = typeof caches !== 'undefined' ? caches.default : undefined
+
+    if (ttl > 0 && cache) {
+      const cacheKey = new Request(url.toString(), { method: 'GET' })
+      const hit = await cache.match(cacheKey)
+      if (hit) return withHeader(hit, 'X-Cache', 'HIT')
+
+      const res = await handleApi(url)
+      if (res.ok) {
+        const cacheable = res.clone()
+        cacheable.headers.set('Cache-Control', `public, max-age=${ttl}`)
+        cacheable.headers.set('X-Cache', 'MISS')
+        if (ctx?.waitUntil) ctx.waitUntil(cache.put(cacheKey, cacheable))
+      }
+      return withHeader(res, 'X-Cache', 'MISS')
+    }
+
+    return handleApi(url)
   },
 }

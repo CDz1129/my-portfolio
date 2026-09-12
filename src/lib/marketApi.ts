@@ -1,6 +1,7 @@
 import type { Market } from '@/domain/types'
 
 const API_BASE: string = import.meta.env.VITE_MARKET_API ?? ''
+const API_TOKEN: string = import.meta.env.VITE_MARKET_API_TOKEN ?? ''
 
 export interface QuoteResult {
   key: string
@@ -21,7 +22,9 @@ export interface QuoteItem {
 
 async function apiGet<T>(path: string, params: Record<string, string>): Promise<T> {
   const query = new URLSearchParams(params).toString()
-  const res = await fetch(`${API_BASE}${path}?${query}`)
+  const res = await fetch(`${API_BASE}${path}?${query}`, {
+    headers: API_TOKEN ? { 'X-API-Token': API_TOKEN } : undefined,
+  })
   if (!res.ok) {
     let message = `请求失败 (${res.status})`
     try {
