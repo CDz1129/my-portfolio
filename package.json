@@ -22,15 +22,13 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
-    "date-fns": "^4.1.0",
     "dexie": "^4.0.11",
     "dexie-react-hooks": "^1.1.7",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
-    "recharts": "^2.13.3",
-    "zustand": "^5.0.1"
+    "recharts": "^2.13.3"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
