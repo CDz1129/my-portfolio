@@ -58,3 +58,23 @@ describe('cloudflare worker token gate', () => {
     expect(res.status).toBe(200)
   })
 })
+
+describe('cloudflare worker rate limiting', () => {
+  it('returns 429 when the native limiter rejects', async () => {
+    const limited = { ...env, RATE_LIMITER: { limit: async () => ({ success: false }) } }
+    const res = await worker.fetch(new Request('https://example.com/api/health'), limited)
+    expect(res.status).toBe(429)
+    expect(res.headers.get('Retry-After')).toBe('60')
+  })
+
+  it('passes through when the limiter allows', async () => {
+    const limited = { ...env, RATE_LIMITER: { limit: async () => ({ success: true }) } }
+    const res = await worker.fetch(new Request('https://example.com/api/health'), limited)
+    expect(res.status).toBe(200)
+  })
+
+  it('fails open when no limiter is bound', async () => {
+    const res = await worker.fetch(new Request('https://example.com/api/health'), env)
+    expect(res.status).toBe(200)
+  })
+})

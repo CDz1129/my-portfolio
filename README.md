@@ -110,6 +110,8 @@ npx wrangler login
 npm run deploy
 ```
 
+`wrangler.toml` 内置了基于 Cloudflare **Rate Limiting binding** 的接口限流（默认每 IP 60 次 / 60 秒，作用于 `/api/*`），无需自定义域名；删除 `[[ratelimits]]` 段即可关闭。另有可选的令牌校验：设置 Secret `API_TOKEN` 后，请求需带 `X-API-Token` 头；前端通过构建变量 `VITE_MARKET_API_TOKEN` 提供同一值（注意静态前端中的令牌只能阻挡爬虫，并非密钥）。报价与汇率响应还会在边缘缓存 60–300 秒，减少回源。
+
 ### GitHub Pages（仅前端）
 
 GitHub Pages 只能托管静态文件，无法运行 `/api` 行情代理。若只想托管前端，需要：

@@ -96,6 +96,20 @@ export default {
       return json({ error: 'unauthorized' }, 401)
     }
 
+    // Optional native rate limiting (Cloudflare Rate Limiting binding).
+    // Fails open so the proxy keeps working if the binding is absent.
+    if (env.RATE_LIMITER && typeof env.RATE_LIMITER.limit === 'function') {
+      const key = request.headers.get('CF-Connecting-IP') ?? 'anonymous'
+      try {
+        const { success } = await env.RATE_LIMITER.limit({ key })
+        if (!success) {
+          return withHeader(json({ error: 'rate limit exceeded' }, 429), 'Retry-After', '60')
+        }
+      } catch {
+        // limiter unavailable: continue without limiting
+      }
+    }
+
     const ttl = CACHE_TTL_SECONDS[url.pathname] ?? 0
     const cache = typeof caches !== 'undefined' ? caches.default : undefined
 
