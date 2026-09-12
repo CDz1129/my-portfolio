@@ -64,32 +64,38 @@ export function convert(
   return (amount * fromRate) / toRate
 }
 
+/** Non-ISO currencies that must always use our own symbol (Intl would print the code). */
+const SYMBOL_ONLY_CURRENCIES = new Set(['BTC', 'ETH', 'USDT'])
+
 export function formatMoney(
   amount: number,
   currency: CurrencyCode,
   opts: { compact?: boolean; locale?: string } = {},
 ): string {
   const locale = opts.locale ?? formatLocale
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency,
-      currencyDisplay: 'narrowSymbol',
-      notation: opts.compact ? 'compact' : 'standard',
-      maximumFractionDigits: opts.compact ? 1 : 2,
-      minimumFractionDigits: opts.compact ? 0 : 2,
-    }).format(amount)
-  } catch {
-    // Non-ISO currencies (e.g. USDT, BTC) are not supported by Intl; prefix the symbol manually.
-    const { symbol } = currencyMeta(currency)
-    const digits = opts.compact ? 1 : 2
-    const number = new Intl.NumberFormat(locale, {
-      notation: opts.compact ? 'compact' : 'standard',
-      maximumFractionDigits: digits,
-      minimumFractionDigits: opts.compact ? 0 : 2,
-    }).format(amount)
-    return `${symbol}${number}`
+  if (!SYMBOL_ONLY_CURRENCIES.has(currency)) {
+    try {
+      return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency,
+        currencyDisplay: 'narrowSymbol',
+        notation: opts.compact ? 'compact' : 'standard',
+        maximumFractionDigits: opts.compact ? 1 : 2,
+        minimumFractionDigits: opts.compact ? 0 : 2,
+      }).format(amount)
+    } catch {
+      // fall through to the manual symbol path below
+    }
   }
+  // Non-ISO currencies (e.g. USDT, BTC, ETH) are not supported by Intl; prefix the symbol manually.
+  const { symbol } = currencyMeta(currency)
+  const digits = opts.compact ? 1 : 2
+  const number = new Intl.NumberFormat(locale, {
+    notation: opts.compact ? 'compact' : 'standard',
+    maximumFractionDigits: digits,
+    minimumFractionDigits: opts.compact ? 0 : 2,
+  }).format(amount)
+  return `${symbol}${number}`
 }
 
 export function formatNumber(amount: number, digits = 2): string {

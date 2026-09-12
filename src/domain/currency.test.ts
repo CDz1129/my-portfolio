@@ -47,6 +47,13 @@ describe('formatMoney', () => {
     expect(out).toContain('₮')
   })
 
+  it('uses its own symbols for BTC and ETH instead of the letter code', () => {
+    expect(formatMoney(0.5, 'BTC')).toContain('₿')
+    expect(formatMoney(0.5, 'BTC')).not.toContain('BTC')
+    expect(formatMoney(2, 'ETH')).toContain('Ξ')
+    expect(formatMoney(2, 'ETH')).not.toContain('ETH')
+  })
+
   it('supports compact notation for crypto currencies', () => {
     expect(() => formatMoney(1234567, 'BTC', { compact: true })).not.toThrow()
     expect(formatMoney(0.5, 'BTC')).toContain('0.50')
