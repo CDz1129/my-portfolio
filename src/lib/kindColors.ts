@@ -1,4 +1,4 @@
-import type { AccountKind } from '@/domain/types'
+import type { AccountKind, LiquidityClass } from '@/domain/types'
 
 export const KIND_COLORS: Record<AccountKind, string> = {
   cash: '#10b981',
@@ -6,6 +6,13 @@ export const KIND_COLORS: Record<AccountKind, string> = {
   fixed: '#0ea5e9',
   receivable: '#14b8a6',
   liability: '#f43f5e',
+}
+
+export const LIQUIDITY_COLORS: Record<LiquidityClass, string> = {
+  liquid: '#10b981',
+  investment: '#6366f1',
+  fixed: '#0ea5e9',
+  receivable: '#14b8a6',
 }
 
 export const KIND_ICONS: Record<AccountKind, string> = {

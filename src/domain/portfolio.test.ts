@@ -5,6 +5,7 @@ import {
   accountValueInBase,
   summarize,
   allocationByKind,
+  allocationByLiquidity,
   netWorthSeries,
   holdingsOfAccount,
 } from './portfolio'
@@ -211,6 +212,40 @@ describe('allocationByKind', () => {
     expect(cash.ratio).toBeCloseTo(0.3)
     expect(items.find((i) => i.kind === 'investment')!.ratio).toBeCloseTo(0.7)
     expect(items.find((i) => i.kind === 'liability')).toBeUndefined()
+  })
+})
+
+describe('allocationByLiquidity', () => {
+  it('treats brokerage cash as liquid and holdings as investment', () => {
+    const accounts = [
+      account({ id: 'cash', kind: 'cash', openingBalance: 300 }),
+      account({ id: 'broker', kind: 'investment', openingBalance: 500 }),
+    ]
+    const holdings = [
+      holding({ id: 'stock', accountId: 'broker', openingShares: 2, price: 100, currency: 'CNY' }),
+    ]
+    const p = computePortfolio(accounts, holdings, [], rates)
+    const items = allocationByLiquidity(accounts, holdings, p, rates, 'CNY')
+
+    const liquid = items.find((i) => i.class === 'liquid')!
+    const investment = items.find((i) => i.class === 'investment')!
+    expect(liquid.value).toBe(800)
+    expect(investment.value).toBe(200)
+    expect(liquid.ratio).toBeCloseTo(0.8)
+    expect(investment.ratio).toBeCloseTo(0.2)
+  })
+
+  it('maps fixed and receivable and excludes liabilities', () => {
+    const accounts = [
+      account({ id: 'house', kind: 'fixed', openingBalance: 1000 }),
+      account({ id: 'friend', kind: 'receivable', openingBalance: 200 }),
+      account({ id: 'loan', kind: 'liability', openingBalance: 9999 }),
+    ]
+    const p = computePortfolio(accounts, [], [], rates)
+    const items = allocationByLiquidity(accounts, [], p, rates, 'CNY')
+    expect(items.map((i) => i.class)).toEqual(['fixed', 'receivable'])
+    expect(items.find((i) => i.class === 'fixed')!.value).toBe(1000)
+    expect(items.find((i) => i.class === 'receivable')!.value).toBe(200)
   })
 })
 

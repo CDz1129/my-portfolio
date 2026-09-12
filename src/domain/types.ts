@@ -106,3 +106,20 @@ export const LIABILITY_KINDS: AccountKind[] = ['liability']
 export function isLiability(kind: AccountKind): boolean {
   return LIABILITY_KINDS.includes(kind)
 }
+
+/** A second lens on assets: how liquid each part is, regardless of account type. */
+export type LiquidityClass = 'liquid' | 'investment' | 'fixed' | 'receivable'
+
+export const LIQUIDITY_ORDER: LiquidityClass[] = [
+  'liquid',
+  'investment',
+  'fixed',
+  'receivable',
+]
+
+export const LIQUIDITY_LABEL: Record<LiquidityClass, string> = {
+  liquid: '流动资产',
+  investment: '投资资产',
+  fixed: '固定资产',
+  receivable: '应收款',
+}

@@ -10,11 +10,13 @@ import { convert } from './currency'
 import {
   accountValueInBase,
   allocationByKind,
+  allocationByLiquidity,
   computePortfolio,
   holdingsOfAccount,
   netWorthSeries,
   summarize,
   type AllocationItem,
+  type LiquidityItem,
   type Portfolio,
   type SeriesPoint,
   type Summary,
@@ -49,6 +51,7 @@ export interface Overview {
   portfolio: Portfolio
   summary: Summary
   allocation: AllocationItem[]
+  liquidity: LiquidityItem[]
   accounts: AccountView[]
   accountsByKind: Record<AccountKind, AccountView[]>
   series: SeriesPoint[]
@@ -99,6 +102,7 @@ export function buildOverview(input: OverviewInput): Overview {
   const portfolio = computePortfolio(accounts, holdings, transactions, rates)
   const summary = summarize(accounts, holdings, portfolio, rates, base)
   const allocation = allocationByKind(accounts, holdings, portfolio, rates, base)
+  const liquidity = allocationByLiquidity(accounts, holdings, portfolio, rates, base)
   const series = netWorthSeries(accounts, holdings, transactions, rates, base)
 
   const accountsByKind = ACCOUNT_KIND_ORDER.reduce(
@@ -165,6 +169,7 @@ export function buildOverview(input: OverviewInput): Overview {
     portfolio,
     summary,
     allocation,
+    liquidity,
     accounts: accountViews,
     accountsByKind,
     series,

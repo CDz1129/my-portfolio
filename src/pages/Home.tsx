@@ -4,25 +4,44 @@ import { ChevronRight, RefreshCw, TrendingDown, TrendingUp } from 'lucide-react'
 import { usePortfolioData } from '@/store/usePortfolio'
 import { useDataMode } from '@/store/DataMode'
 import { useSync } from '@/store/useSync'
-import { ACCOUNT_KIND_LABEL, ACCOUNT_KIND_ORDER, isLiability } from '@/domain/types'
+import { ACCOUNT_KIND_LABEL, ACCOUNT_KIND_ORDER, LIQUIDITY_LABEL, isLiability } from '@/domain/types'
 import { formatMoney, formatPercent } from '@/domain/currency'
 import { NetWorthHero, type NetWorthDisplay } from '@/components/NetWorthHero'
 import { AllocationDonut, MiniTrend } from '@/components/Charts'
-import { Card } from '@/components/ui'
-import { KIND_COLORS, KIND_ICONS } from '@/lib/kindColors'
+import { Card, Segmented } from '@/components/ui'
+import { KIND_COLORS, KIND_ICONS, LIQUIDITY_COLORS } from '@/lib/kindColors'
 import { cn } from '@/lib/cn'
 
 export function Home() {
   const { overview } = usePortfolioData()
-  const { summary, allocation, accountsByKind, series, investments, change30d } = overview
+  const { summary, allocation, liquidity, accountsByKind, series, investments, change30d } =
+    overview
   const base = overview.baseCurrency
   const [display, setDisplay] = useState<NetWorthDisplay>('net')
+  const [allocView, setAllocView] = useState<'kind' | 'liquidity'>('kind')
   const { mode, realHasData } = useDataMode()
   const navigate = useNavigate()
   const sync = useSync()
 
   const recentSeries = series.slice(-12)
   const trendPositive = change30d >= 0
+
+  const slices =
+    allocView === 'kind'
+      ? allocation.map((item) => ({
+          key: item.kind,
+          name: ACCOUNT_KIND_LABEL[item.kind],
+          value: item.value,
+          ratio: item.ratio,
+          color: KIND_COLORS[item.kind],
+        }))
+      : liquidity.map((item) => ({
+          key: item.class,
+          name: LIQUIDITY_LABEL[item.class],
+          value: item.value,
+          ratio: item.ratio,
+          color: LIQUIDITY_COLORS[item.class],
+        }))
 
   return (
     <div>
@@ -109,7 +128,9 @@ export function Home() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold">资产配置</h2>
-              <p className="mt-0.5 text-[11px] text-slate-400">各类资产占总资产比例</p>
+              <p className="mt-0.5 text-[11px] text-slate-400">
+                {allocView === 'kind' ? '各类账户占总资产比例' : '按流动性看资产结构'}
+              </p>
             </div>
             <button
               type="button"
@@ -120,22 +141,32 @@ export function Home() {
             </button>
           </div>
 
+          <div className="mt-3">
+            <Segmented
+              size="sm"
+              value={allocView}
+              options={[
+                { value: 'kind', label: '按类型' },
+                { value: 'liquidity', label: '按流动性' },
+              ]}
+              onChange={(value) => setAllocView(value as 'kind' | 'liquidity')}
+            />
+          </div>
+
           <div className="mt-3 flex items-center gap-4">
-            <AllocationDonut items={allocation} baseCurrency={base} size={150} />
+            <AllocationDonut data={slices} baseCurrency={base} size={150} />
             <ul className="flex-1 space-y-2">
-              {allocation.map((item) => (
-                <li key={item.kind} className="flex items-center gap-2 text-xs">
+              {slices.map((item) => (
+                <li key={item.key} className="flex items-center gap-2 text-xs">
                   <span
                     className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ background: KIND_COLORS[item.kind] }}
+                    style={{ background: item.color }}
                   />
-                  <span className="flex-1 text-slate-500">{ACCOUNT_KIND_LABEL[item.kind]}</span>
+                  <span className="flex-1 text-slate-500">{item.name}</span>
                   <span className="font-semibold">{formatPercent(item.ratio)}</span>
                 </li>
               ))}
-              {allocation.length === 0 && (
-                <li className="text-xs text-slate-400">暂无资产</li>
-              )}
+              {slices.length === 0 && <li className="text-xs text-slate-400">暂无资产</li>}
             </ul>
           </div>
         </Card>

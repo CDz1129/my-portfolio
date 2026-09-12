@@ -9,25 +9,29 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import type { AllocationItem, SeriesPoint } from '@/domain/portfolio'
-import { ACCOUNT_KIND_LABEL } from '@/domain/types'
+import type { SeriesPoint } from '@/domain/portfolio'
 import { formatMoney } from '@/domain/currency'
-import { KIND_COLORS } from '@/lib/kindColors'
 import { cn } from '@/lib/cn'
 
+export interface DonutSlice {
+  name: string
+  value: number
+  color: string
+}
+
 export function AllocationDonut({
-  items,
+  data,
   baseCurrency,
   size = 168,
 }: {
-  items: AllocationItem[]
+  data: DonutSlice[]
   baseCurrency: string
   size?: number
 }) {
-  const data = items.map((item) => ({
-    name: ACCOUNT_KIND_LABEL[item.kind],
+  const slices = data.map((item) => ({
+    name: item.name,
     value: Math.max(item.value, 0),
-    color: KIND_COLORS[item.kind],
+    color: item.color,
   }))
 
   return (
@@ -35,14 +39,14 @@ export function AllocationDonut({
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
-            data={data}
+            data={slices}
             dataKey="value"
             innerRadius="66%"
             outerRadius="100%"
             paddingAngle={2}
             stroke="none"
           >
-            {data.map((entry, index) => (
+            {slices.map((entry, index) => (
               <Cell key={index} fill={entry.color} />
             ))}
           </Pie>

@@ -1,5 +1,5 @@
-import type { Account, AccountKind, Holding, Transaction } from './types'
-import { ACCOUNT_KIND_ORDER, isLiability } from './types'
+import type { Account, AccountKind, Holding, LiquidityClass, Transaction } from './types'
+import { ACCOUNT_KIND_ORDER, LIQUIDITY_ORDER, isLiability } from './types'
 import { convert } from './currency'
 
 export interface Portfolio {
@@ -156,6 +156,55 @@ export function allocationByKind(
   return ACCOUNT_KIND_ORDER.filter((k) => (totals.get(k) ?? 0) > 0).map((kind) => {
     const value = totals.get(kind)!
     return { kind, value, ratio: totalAssets > 0 ? value / totalAssets : 0 }
+  })
+}
+
+export interface LiquidityItem {
+  class: LiquidityClass
+  value: number
+  ratio: number
+}
+
+/**
+ * Assets grouped by liquidity rather than account type. Cash sitting in a
+ * brokerage account is liquid (you can withdraw it); only the invested portion
+ * counts as investment assets.
+ */
+export function allocationByLiquidity(
+  accounts: Account[],
+  holdings: Holding[],
+  portfolio: Portfolio,
+  rates: Record<string, number>,
+  base: string,
+): LiquidityItem[] {
+  const totals = new Map<LiquidityClass, number>()
+  let totalAssets = 0
+  const add = (cls: LiquidityClass, value: number) => {
+    totals.set(cls, (totals.get(cls) ?? 0) + value)
+    totalAssets += value
+  }
+
+  for (const account of accounts) {
+    if (account.archived || isLiability(account.kind)) continue
+    const cash = convert(portfolio.balances[account.id] ?? 0, account.currency, base, rates)
+
+    if (account.kind === 'investment') {
+      const invested = holdingsOfAccount(holdings, account.id).reduce(
+        (sum, h) => sum + holdingMarketValue(h, portfolio.shares[h.id] ?? 0, rates, base),
+        0,
+      )
+      add('liquid', cash)
+      add('investment', invested)
+    } else {
+      const cls: LiquidityClass =
+        account.kind === 'cash' ? 'liquid' : account.kind === 'fixed' ? 'fixed' : 'receivable'
+      add(cls, cash)
+    }
+  }
+
+  return LIQUIDITY_ORDER.filter((cls) => (totals.get(cls) ?? 0) > 0).map((cls) => {
+    const value = totals.get(cls)!
+    return { class: cls, value, ratio: totalAssets > 0 ? value / totalAssets : 0 }
   })
 }
 
