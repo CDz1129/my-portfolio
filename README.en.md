@@ -6,6 +6,26 @@
 
 Track A-shares, Hong Kong and US stocks, crypto and every other asset or liability through a Chinese/English UI. No account, no login, no cloud database — the server stores none of your data.
 
+## What is this
+
+A **local-first personal asset recording and presentation tool**. It gathers the assets scattered across your accounts — cash, investments, fixed assets, receivables, liabilities — into one place: net worth, allocation and trend.
+
+## Why I built it
+
+- A personal need: I wanted one place to **see my assets at a glance**.
+- Most comparable apps are paid, and not cheap — so I built my own.
+- **The core selling point: your data lives only in your own browser and never leaves your machine.** The trade-off is equally clear — **if the browser data is gone, it is gone.** So build the habit of exporting a JSON backup from **Settings → Backup & restore**.
+
+## Why market prices update only quarterly by default
+
+Different price-checking rhythms tend to produce different long-term results: those who refresh every second, those who check daily, and those who look once a year — often the last one is the calmest. This project hopes the assets you buy are ones that **let you sleep well** — checking once a quarter should not make you anxious. Less noise from constant price-watching, more attention for life.
+
+> That is why auto-update defaults to once a quarter, with manual refresh always available; change the frequency in Settings.
+
+## What this is NOT
+
+**This is not a life budgeting / expense-tracking app.** It does record asset changes (income / expense / transfer / buy / sell / balance adjustment), but its essence is **asset inventory and presentation**, fundamentally different from apps that log day-to-day spending. If you need to track daily expenses with categories and budgets, please pick a dedicated bookkeeping app.
+
 ## Privacy promise
 
 Most money apps ask you to sign up and upload your holdings to someone else's server. My Portfolio is the opposite: **all data lives in your own browser** (IndexedDB), and the code is fully open to audit.
