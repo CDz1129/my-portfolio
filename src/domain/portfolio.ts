@@ -1,4 +1,11 @@
-import type { Account, AccountKind, Holding, LiquidityClass, Transaction } from './types'
+import type {
+  Account,
+  AccountKind,
+  Holding,
+  LiquidityClass,
+  Snapshot,
+  Transaction,
+} from './types'
 import { ACCOUNT_KIND_ORDER, LIQUIDITY_ORDER, isLiability } from './types'
 import { convert } from './currency'
 
@@ -89,20 +96,24 @@ export function holdingMarketValue(
   return convert(shares * holding.price, holding.currency, base, rates)
 }
 
+export type ValuationMode = 'market' | 'cost'
+
 export function accountValueInBase(
   account: Account,
   holdings: Holding[],
   portfolio: Portfolio,
   rates: Record<string, number>,
   base: string,
+  mode: ValuationMode = 'market',
 ): number {
   const cash = convert(portfolio.balances[account.id] ?? 0, account.currency, base, rates)
   if (account.kind !== 'investment') return cash
 
-  const invested = holdingsOfAccount(holdings, account.id).reduce(
-    (sum, h) => sum + holdingMarketValue(h, portfolio.shares[h.id] ?? 0, rates, base),
-    0,
-  )
+  const invested = holdingsOfAccount(holdings, account.id).reduce((sum, h) => {
+    const price = mode === 'cost' ? h.avgCost : h.price
+    const shares = portfolio.shares[h.id] ?? 0
+    return sum + convert(shares * price, h.currency, base, rates)
+  }, 0)
   return cash + invested
 }
 
@@ -118,12 +129,13 @@ export function summarize(
   portfolio: Portfolio,
   rates: Record<string, number>,
   base: string,
+  mode: ValuationMode = 'market',
 ): Summary {
   let assets = 0
   let liabilities = 0
   for (const account of accounts) {
     if (account.archived) continue
-    const value = accountValueInBase(account, holdings, portfolio, rates, base)
+    const value = accountValueInBase(account, holdings, portfolio, rates, base, mode)
     if (isLiability(account.kind)) liabilities += value
     else assets += value
   }
@@ -212,30 +224,67 @@ export interface SeriesPoint extends Summary {
   date: string
 }
 
+function snapshotSummary(snapshot: Snapshot, base: string): Summary {
+  const convertValue = (value: number) => {
+    if (snapshot.baseCurrency === base) return value
+    const rates = snapshot.rates as Record<string, number>
+    const from = rates[snapshot.baseCurrency]
+    const to = rates[base]
+    if (from == null || to == null) return value
+    return (value * from) / to
+  }
+  const assets = convertValue(snapshot.assets)
+  const liabilities = convertValue(snapshot.liabilities)
+  return { assets, liabilities, net: assets - liabilities }
+}
+
+/**
+ * Net-worth over time.
+ *
+ * If snapshots are provided, dates on/after the first snapshot use the recorded
+ * (market) values, while earlier dates fall back to cost basis so history is
+ * never retroactively rewritten by today's prices. The final point always uses
+ * the current market value.
+ */
 export function netWorthSeries(
   accounts: Account[],
   holdings: Holding[],
   txs: Transaction[],
   rates: Record<string, number>,
   base: string,
-  options: { end?: string } = {},
+  options: { end?: string; snapshots?: Snapshot[] } = {},
 ): SeriesPoint[] {
   const end = options.end ?? new Date().toISOString().slice(0, 10)
-  const dates = new Set<string>()
-  for (const a of accounts) if (a.openingDate <= end) dates.add(a.openingDate)
-  for (const t of txs) if (t.date <= end) dates.add(t.date)
-  dates.add(end)
+  const snapshots = [...(options.snapshots ?? [])].sort((a, b) => a.date.localeCompare(b.date))
+  const firstSnapshot = snapshots[0]?.date
 
-  const sorted = [...dates].sort()
-  return sorted.map((date) => {
+  const eventDates = new Set<string>()
+  for (const a of accounts) if (a.openingDate <= end) eventDates.add(a.openingDate)
+  for (const t of txs) if (t.date <= end) eventDates.add(t.date)
+
+  const points = new Map<string, SeriesPoint>()
+
+  // History before the first snapshot is valued at cost.
+  for (const date of eventDates) {
+    if (firstSnapshot && date >= firstSnapshot) continue
     const portfolio = computePortfolio(
       accounts,
       holdings,
       txs.filter((t) => t.date <= date),
       rates,
     )
-    return { date, ...summarize(accounts, holdings, portfolio, rates, base) }
-  })
+    points.set(date, { date, ...summarize(accounts, holdings, portfolio, rates, base, 'cost') })
+  }
+
+  for (const snapshot of snapshots) {
+    if (snapshot.date > end) continue
+    points.set(snapshot.date, { date: snapshot.date, ...snapshotSummary(snapshot, base) })
+  }
+
+  const endPortfolio = computePortfolio(accounts, holdings, txs, rates)
+  points.set(end, { date: end, ...summarize(accounts, holdings, endPortfolio, rates, base, 'market') })
+
+  return [...points.values()].sort((a, b) => a.date.localeCompare(b.date))
 }
 
 export function investmentCost(

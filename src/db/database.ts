@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Account, Group, Holding, Settings, Transaction } from '@/domain/types'
+import type { Account, Group, Holding, Settings, Snapshot, Transaction } from '@/domain/types'
 
 export class PortfolioDB extends Dexie {
   accounts!: Table<Account, string>
@@ -7,6 +7,7 @@ export class PortfolioDB extends Dexie {
   groups!: Table<Group, string>
   transactions!: Table<Transaction, string>
   settings!: Table<Settings, string>
+  snapshots!: Table<Snapshot, string>
 
   constructor(name = 'my-portfolio') {
     super(name)
@@ -16,6 +17,9 @@ export class PortfolioDB extends Dexie {
       groups: 'id, createdAt',
       transactions: 'id, type, date, accountId, holdingId, createdAt',
       settings: 'id',
+    })
+    this.version(2).stores({
+      snapshots: 'date, createdAt',
     })
   }
 }

@@ -9,7 +9,7 @@ import { Transactions } from './pages/Transactions'
 import { Trends } from './pages/Trends'
 import { SettingsPage } from './pages/Settings'
 import { db as realDb } from './db/database'
-import { saveSettings } from './db/repository'
+import { captureSnapshot, saveSettings } from './db/repository'
 import { syncPrices, syncRates, isSyncDue } from './store/sync'
 import { DataModeProvider, useDataMode } from './store/DataMode'
 import { I18nProvider, type Lang } from './i18n'
@@ -47,6 +47,7 @@ function AppShell() {
         await syncRates(realDb)
         await syncPrices(dataDb)
         await saveSettings({ lastSyncAt: Date.now() }, realDb)
+        await captureSnapshot(dataDb)
       } catch {
         // offline or API unavailable; keep local data
       }

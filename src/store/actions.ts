@@ -8,6 +8,7 @@ import type {
   TxType,
 } from '@/domain/types'
 import {
+  captureSnapshot,
   newId,
   removeAccount,
   removeGroup,
@@ -129,6 +130,9 @@ export async function recordTransaction(
     amount: Number(input.amount) || 0,
   }
   await upsertTransaction(tx, database)
+  // Capturing a snapshot records the market value at this moment so the trend
+  // can show floating assets without rewriting history later.
+  await captureSnapshot(database)
   return tx
 }
 

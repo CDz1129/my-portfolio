@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Account, Holding, Transaction } from './types'
+import type { Account, Holding, Snapshot, Transaction } from './types'
 import {
   computePortfolio,
   accountValueInBase,
@@ -246,6 +246,63 @@ describe('allocationByLiquidity', () => {
     expect(items.map((i) => i.class)).toEqual(['fixed', 'receivable'])
     expect(items.find((i) => i.class === 'fixed')!.value).toBe(1000)
     expect(items.find((i) => i.class === 'receivable')!.value).toBe(200)
+  })
+})
+
+describe('netWorthSeries with snapshots', () => {
+  it('uses snapshots on/after the first snapshot and cost basis before it', () => {
+    const accounts = [
+      account({ id: 'broker', kind: 'investment', openingBalance: 0, openingDate: '2024-01-01' }),
+    ]
+    const holdings = [
+      holding({
+        id: 'h1',
+        accountId: 'broker',
+        openingShares: 10,
+        avgCost: 100,
+        price: 200,
+        currency: 'CNY',
+      }),
+    ]
+    const snapshots: Snapshot[] = [
+      {
+        date: '2024-03-01',
+        createdAt: 0,
+        baseCurrency: 'CNY',
+        rates: { CNY: 1 } as Snapshot['rates'],
+        assets: 1500,
+        liabilities: 0,
+        net: 1500,
+        holdings: { h1: 1500 },
+      },
+    ]
+
+    const series = netWorthSeries(accounts, holdings, [], rates, 'CNY', {
+      end: '2024-04-01',
+      snapshots,
+    })
+    const byDate = Object.fromEntries(series.map((p) => [p.date, p.net]))
+    expect(byDate['2024-01-01']).toBe(1000) // cost basis: 10 * 100
+    expect(byDate['2024-03-01']).toBe(1500) // recorded snapshot
+    expect(byDate['2024-04-01']).toBe(2000) // current market: 10 * 200
+  })
+
+  it('renders snapshots in the current base currency using their own rates', () => {
+    const snapshots: Snapshot[] = [
+      {
+        date: '2024-02-01',
+        createdAt: 0,
+        baseCurrency: 'USD',
+        rates: { USD: 7.2, CNY: 1 } as Snapshot['rates'],
+        assets: 100,
+        liabilities: 0,
+        net: 100,
+        holdings: {},
+      },
+    ]
+    const series = netWorthSeries([], [], [], rates, 'CNY', { end: '2024-03-01', snapshots })
+    const point = series.find((p) => p.date === '2024-02-01')!
+    expect(point.net).toBeCloseTo(720)
   })
 })
 

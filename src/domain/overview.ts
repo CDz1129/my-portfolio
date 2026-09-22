@@ -3,6 +3,7 @@ import type {
   AccountKind,
   Holding,
   Settings,
+  Snapshot,
   Transaction,
 } from './types'
 import { ACCOUNT_KIND_ORDER, isLiability } from './types'
@@ -64,6 +65,7 @@ export interface OverviewInput {
   holdings: Holding[]
   transactions: Transaction[]
   settings: Settings
+  snapshots?: Snapshot[]
 }
 
 function nativeValueOf(
@@ -95,7 +97,7 @@ function daysBefore(dateStr: string, days: number): string {
 }
 
 export function buildOverview(input: OverviewInput): Overview {
-  const { accounts, holdings, transactions, settings } = input
+  const { accounts, holdings, transactions, settings, snapshots = [] } = input
   const base = settings.baseCurrency
   const rates = settings.rates
 
@@ -103,7 +105,7 @@ export function buildOverview(input: OverviewInput): Overview {
   const summary = summarize(accounts, holdings, portfolio, rates, base)
   const allocation = allocationByKind(accounts, holdings, portfolio, rates, base)
   const liquidity = allocationByLiquidity(accounts, holdings, portfolio, rates, base)
-  const series = netWorthSeries(accounts, holdings, transactions, rates, base)
+  const series = netWorthSeries(accounts, holdings, transactions, rates, base, { snapshots })
 
   const accountsByKind = ACCOUNT_KIND_ORDER.reduce(
     (acc, kind) => {

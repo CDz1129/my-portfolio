@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db as realDb, type PortfolioDB } from '@/db/database'
 import { getSettings } from '@/db/repository'
 import { DEFAULT_BASE_CURRENCY, DEFAULT_RATES } from '@/domain/currency'
-import type { Account, Group, Holding, Settings, Transaction } from '@/domain/types'
+import type { Account, Group, Holding, Settings, Snapshot, Transaction } from '@/domain/types'
 import { buildOverview, type Overview } from '@/domain/overview'
 import { useOptionalDataMode, type DataMode } from './DataMode'
 
@@ -41,6 +41,7 @@ export function usePortfolioData(): PortfolioData {
     [dataDb],
     [] as Transaction[],
   )
+  const snapshots = useLiveQuery(() => dataDb.snapshots.toArray(), [dataDb], [] as Snapshot[])
   // Settings are app-level preferences and always live in the real database.
   // NOTE: the live-query querier must stay read-only; defaults are persisted here instead.
   const storedSettings = useLiveQuery(() => realDb.settings.get('app'), [])
@@ -51,8 +52,8 @@ export function usePortfolioData(): PortfolioData {
   }, [])
 
   const overview = useMemo(
-    () => buildOverview({ accounts, holdings, transactions, settings }),
-    [accounts, holdings, transactions, settings],
+    () => buildOverview({ accounts, holdings, transactions, settings, snapshots }),
+    [accounts, holdings, transactions, settings, snapshots],
   )
 
   return {

@@ -19,6 +19,8 @@ import {
   migrateLegacyDemoData,
   exportBackup,
   importBackup,
+  captureSnapshot,
+  listSnapshots,
 } from './repository'
 import type { Account, Settings } from '@/domain/types'
 
@@ -50,7 +52,7 @@ describe('createDatabase', () => {
     const opened = fresh()
     await opened.open()
     expect(opened.tables.map((t) => t.name).sort()).toEqual(
-      ['accounts', 'groups', 'holdings', 'settings', 'transactions'].sort(),
+      ['accounts', 'groups', 'holdings', 'settings', 'snapshots', 'transactions'].sort(),
     )
   })
 })
@@ -329,5 +331,63 @@ describe('exportBackup / importBackup', () => {
     const settings = await getSettings(target)
     expect(settings.demoDismissed).toBeUndefined()
     expect(settings.demoSeeded).toBeUndefined()
+  })
+
+  it('round-trips snapshots', async () => {
+    const source = fresh()
+    await upsertAccount(sampleAccount, source)
+    await captureSnapshot(source)
+
+    const backup = await exportBackup(source)
+    expect(backup.snapshots).toHaveLength(1)
+
+    const target = fresh()
+    await importBackup(backup, target)
+    expect(await listSnapshots(target)).toHaveLength(1)
+  })
+})
+
+describe('captureSnapshot', () => {
+  it('records total and per-holding market values', async () => {
+    const opened = fresh()
+    await upsertAccount(
+      { ...sampleAccount, id: 'inv', kind: 'investment', currency: 'CNY', openingBalance: 500 },
+      opened,
+    )
+    await upsertHolding(
+      {
+        id: 'h1',
+        accountId: 'inv',
+        symbol: 'X',
+        market: 'A',
+        currency: 'CNY',
+        openingShares: 2,
+        avgCost: 100,
+        price: 150,
+      },
+      opened,
+    )
+
+    const snapshot = await captureSnapshot(opened)
+    expect(snapshot).not.toBeNull()
+    expect(snapshot!.net).toBe(800)
+    expect(snapshot!.holdings.h1).toBe(300)
+    expect(await listSnapshots(opened)).toHaveLength(1)
+  })
+
+  it('keeps a single snapshot per day and is cleared with all data', async () => {
+    const opened = fresh()
+    await upsertAccount(sampleAccount, opened)
+    await captureSnapshot(opened)
+    await captureSnapshot(opened)
+    expect(await listSnapshots(opened)).toHaveLength(1)
+
+    await clearAllData(opened)
+    expect(await listSnapshots(opened)).toHaveLength(0)
+  })
+
+  it('does nothing when there are no accounts', async () => {
+    const opened = fresh()
+    expect(await captureSnapshot(opened)).toBeNull()
   })
 })

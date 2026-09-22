@@ -64,6 +64,7 @@ Data is bound to "the same browser + the same origin": clearing site data, using
 ## Architecture notes
 
 - **Event-sourced ledger**: an account stores only `openingBalance`; every other balance is replayed from transactions, so history and trends can be recomputed freely.
+- **Net-worth snapshots**: a snapshot (including each holding's market value) is recorded on every transaction or price/rate refresh. The trend shows floating assets through these snapshots; before the first snapshot it is drawn at **cost basis**, so history is never rewritten by today's prices.
 - **Demo isolation**: demo data lives in its own database; demo data that older builds mixed into the real database is auto-migrated on startup.
 - **Market fallback chain**: Yahoo first, then Tencent (A / HK / US, GBK decoded) and OKX (crypto).
 - **i18n**: a small in-house dictionary + React Context, no third-party dependency.

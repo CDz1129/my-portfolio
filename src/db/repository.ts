@@ -1,8 +1,13 @@
-import type { Account, Group, Holding, Settings, Transaction } from '@/domain/types'
-import { DEFAULT_BASE_CURRENCY, DEFAULT_RATES } from '@/domain/currency'
+import type { Account, Group, Holding, Settings, Snapshot, Transaction } from '@/domain/types'
+import { DEFAULT_BASE_CURRENCY, DEFAULT_RATES, convert } from '@/domain/currency'
+import { computePortfolio, summarize } from '@/domain/portfolio'
 import { db as defaultDb, type PortfolioDB } from './database'
 
 const SETTINGS_ID = 'app' as const
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10)
+}
 
 export function newId(prefix = 'id'): string {
   const rand =
@@ -118,6 +123,56 @@ export async function removeTransaction(
   database: PortfolioDB = defaultDb,
 ): Promise<void> {
   await database.transactions.delete(id)
+}
+
+export async function listSnapshots(database: PortfolioDB = defaultDb): Promise<Snapshot[]> {
+  const rows = await database.snapshots.toArray()
+  return rows.sort((a, b) => a.date.localeCompare(b.date))
+}
+
+/**
+ * Record the current market valuation as a snapshot (one per day; later
+ * captures on the same day overwrite earlier ones).
+ */
+export async function captureSnapshot(
+  database: PortfolioDB = defaultDb,
+): Promise<Snapshot | null> {
+  const [accounts, holdings, transactions, settings] = await Promise.all([
+    database.accounts.toArray(),
+    database.holdings.toArray(),
+    database.transactions.toArray(),
+    getSettings(database),
+  ])
+  if (accounts.length === 0) return null
+
+  const base = settings.baseCurrency
+  const rates = settings.rates
+  const portfolio = computePortfolio(accounts, holdings, transactions, rates)
+  const summary = summarize(accounts, holdings, portfolio, rates, base)
+
+  const holdingValues: Record<string, number> = {}
+  for (const holding of holdings) {
+    const shares = portfolio.shares[holding.id] ?? 0
+    holdingValues[holding.id] = convert(
+      shares * holding.price,
+      holding.currency,
+      base,
+      rates,
+    )
+  }
+
+  const snapshot: Snapshot = {
+    date: todayIso(),
+    createdAt: Date.now(),
+    baseCurrency: base,
+    rates,
+    assets: summary.assets,
+    liabilities: summary.liabilities,
+    net: summary.net,
+    holdings: holdingValues,
+  }
+  await database.snapshots.put(snapshot)
+  return snapshot
 }
 
 function csvCell(value: unknown): string {
@@ -460,12 +515,14 @@ export async function clearAllData(database: PortfolioDB = defaultDb): Promise<v
     database.holdings,
     database.groups,
     database.transactions,
+    database.snapshots,
     async () => {
       await Promise.all([
         database.accounts.clear(),
         database.holdings.clear(),
         database.groups.clear(),
         database.transactions.clear(),
+        database.snapshots.clear(),
       ])
     },
   )
@@ -549,14 +606,16 @@ export interface BackupPayload {
   holdings: Holding[]
   groups: Group[]
   transactions: Transaction[]
+  snapshots: Snapshot[]
 }
 
 export async function exportBackup(database: PortfolioDB = defaultDb): Promise<BackupPayload> {
-  const [accounts, holdings, groups, transactions, settings] = await Promise.all([
+  const [accounts, holdings, groups, transactions, snapshots, settings] = await Promise.all([
     listAccounts(database),
     listHoldings(database),
     listGroups(database),
     listTransactions(database),
+    listSnapshots(database),
     getSettings(database),
   ])
   return {
@@ -568,6 +627,7 @@ export async function exportBackup(database: PortfolioDB = defaultDb): Promise<B
     holdings,
     groups,
     transactions,
+    snapshots,
   }
 }
 
@@ -584,6 +644,7 @@ export function validateBackup(value: unknown): BackupPayload {
   const holdings = assertArray(payload.holdings) as Holding[]
   const groups = assertArray(payload.groups) as Group[]
   const transactions = assertArray(payload.transactions) as Transaction[]
+  const snapshots = (Array.isArray(payload.snapshots) ? payload.snapshots : []) as Snapshot[]
   if (accounts.some((a) => !a || typeof a.id !== 'string')) {
     throw new Error('backup.corrupt')
   }
@@ -596,6 +657,7 @@ export function validateBackup(value: unknown): BackupPayload {
     holdings,
     groups,
     transactions,
+    snapshots,
   }
 }
 
@@ -611,17 +673,20 @@ export async function importBackup(
     database.holdings,
     database.groups,
     database.transactions,
+    database.snapshots,
     async () => {
       await Promise.all([
         database.accounts.clear(),
         database.holdings.clear(),
         database.groups.clear(),
         database.transactions.clear(),
+        database.snapshots.clear(),
       ])
       await database.groups.bulkPut(payload.groups)
       await database.accounts.bulkPut(payload.accounts)
       await database.holdings.bulkPut(payload.holdings)
       await database.transactions.bulkPut(payload.transactions)
+      if (payload.snapshots.length > 0) await database.snapshots.bulkPut(payload.snapshots)
     },
   )
 

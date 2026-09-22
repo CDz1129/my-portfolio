@@ -70,6 +70,24 @@ export interface Settings {
   demoSeeded?: boolean
 }
 
+/**
+ * A point-in-time record of total assets, captured when the user records a
+ * transaction or refreshes prices/rates. This is what lets the net-worth trend
+ * show floating (market) values without retroactively rewriting history.
+ */
+export interface Snapshot {
+  /** ISO date (YYYY-MM-DD); the capture day. Acts as the primary key. */
+  date: string
+  createdAt: number
+  baseCurrency: CurrencyCode
+  rates: Record<CurrencyCode, number>
+  assets: number
+  liabilities: number
+  net: number
+  /** holdingId -> market value in the snapshot's base currency */
+  holdings: Record<string, number>
+}
+
 export const ACCOUNT_KIND_LABEL: Record<AccountKind, string> = {
   cash: '流动资金',
   investment: '投资',
